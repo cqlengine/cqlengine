@@ -117,7 +117,14 @@ class BaseModel(object):
         """ Returns a map of column names to cleaned values """
         values = self._dynamic_columns or {}
         for name, col in self._columns.items():
-            values[name] = col.to_database(getattr(self, name, None))
+            tmp = col.to_database(getattr(self, name, None))
+            types = (columns.List, columns.Map, columns.Set)
+            if isinstance(col, types[0:2]):
+                values[name] = tmp.value
+            elif isinstance(col, types[2]):
+                values[name] = list(tmp.value)
+            else:
+                values[name] = tmp
         return values
 
     @classmethod

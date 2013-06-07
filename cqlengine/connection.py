@@ -27,7 +27,8 @@ _max_connections = 10
 # global connection pool
 connection_pool = None
 
-def setup(hosts, username=None, password=None, max_connections=10, default_keyspace=None):
+def setup(hosts, username=None, password=None, max_connections=10, default_keyspace=None,
+          consistency_level='ONE'):
     """
     Records the hosts and connects to one of them
 
@@ -55,16 +56,17 @@ def setup(hosts, username=None, password=None, max_connections=10, default_keysp
     if not _hosts:
         raise CQLConnectionError("At least one host required")
 
-    connection_pool = ConnectionPool(_hosts, username, password)
+    connection_pool = ConnectionPool(_hosts, username, password, consistency_level)
 
 
 class ConnectionPool(object):
     """Handles pooling of database connections."""
 
-    def __init__(self, hosts, username=None, password=None):
+    def __init__(self, hosts, username=None, password=None, consistency_level='ONE'):
         self._hosts = hosts
         self._username = username
         self._password = password
+        self._consistency_level = consistency_level
 
         self._queue = Queue.Queue(maxsize=_max_connections)
 
@@ -120,7 +122,9 @@ class ConnectionPool(object):
 
         for host in hosts:
             try:
-                new_conn = cql.connect(host.name, host.port, user=self._username, password=self._password)
+                new_conn = cql.connect(
+                    host.name, host.port, user=self._username, password=self._password,
+                    consistency_level=self._consistency_level)
                 new_conn.set_cql_version('3.0.0')
                 return new_conn
             except Exception as e:

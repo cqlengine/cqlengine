@@ -6,7 +6,10 @@ from collections import namedtuple
 import Queue
 import random
 
-import cql
+# import cql
+from cassandra import ConsistencyLevel
+from cassandra.cluster import Cluster
+from cassandra.query import Query, SimpleStatement
 import logging
 
 from copy import copy
@@ -25,6 +28,7 @@ Host = namedtuple('Host', ['name', 'port'])
 _max_connections = 10
 
 # global connection pool
+cluster = None
 connection_pool = None
 
 def setup(hosts, username=None, password=None, max_connections=10, default_keyspace=None, consistency='ONE'):
@@ -34,6 +38,7 @@ def setup(hosts, username=None, password=None, max_connections=10, default_keysp
     :param hosts: list of hosts, strings in the <hostname>:<port>, or just <hostname>
     """
     global _max_connections
+    global cluster
     global connection_pool
     _max_connections = max_connections
 
@@ -55,6 +60,7 @@ def setup(hosts, username=None, password=None, max_connections=10, default_keysp
     if not _hosts:
         raise CQLConnectionError("At least one host required")
 
+    cluster = Cluster(contact_points=hosts)
     connection_pool = ConnectionPool(_hosts, username, password, consistency)
 
 
@@ -76,7 +82,7 @@ class ConnectionPool(object):
         """
         try:
             while not self._queue.empty():
-                self._queue.get().close()
+                self._queue.get().shutdown()
         except:
             pass
 
@@ -85,6 +91,8 @@ class ConnectionPool(object):
         Returns a usable database connection. Uses the internal queue to
         determine whether to return an existing connection or to create
         a new one.
+
+        :rtype: cassandra.cluster.Session
         """
         try:
             if self._queue.empty():
@@ -99,11 +107,11 @@ class ConnectionPool(object):
         use.
 
         :param conn: The connection to be released
-        :type conn: connection
+        :type conn: cassandra.cluster.Session
         """
 
         if self._queue.full():
-            conn.close()
+            conn.shutdown()
         else:
             self._queue.put(conn)
 
@@ -113,42 +121,23 @@ class ConnectionPool(object):
 
         should only return a valid connection that it's actually connected to
         """
-        if not self._hosts:
-            raise CQLConnectionError("At least one host required")
+        session = cluster.connect()
+        return session
 
-        hosts = copy(self._hosts)
-        random.shuffle(hosts)
+    def execute(self, query, params, consistency=None):
+        statement = SimpleStatement(query)
+        statement.consistency_level = consistency or self._consistency
+        if isinstance(statement.consistency_level, basestring):
+            statement.consistency_level = ConsistencyLevel.name_to_value[statement.consistency_level]
 
-        for host in hosts:
-            try:
-                new_conn = cql.connect(
-                    host.name,
-                    host.port,
-                    user=self._username,
-                    password=self._password,
-                    consistency_level=self._consistency
-                )
-                new_conn.set_cql_version('3.0.0')
-                return new_conn
-            except Exception as e:
-                logging.debug("Could not establish connection to {}:{}".format(host.name, host.port))
-                pass
-
-        raise CQLConnectionError("Could not connect to any server in cluster")
-
-    def execute(self, query, params):
         try:
-            con = self.get()
-            cur = con.cursor()
-            cur.execute(query, params)
-            self.put(con)
-            return cur
-        except cql.ProgrammingError as ex:
-            raise CQLEngineException(unicode(ex))
-        except TTransportException:
-            pass
+            session = self.get()
+            results = session.execute(statement, params)
+            self.put(session)
+            return results
+        except Exception as ex:
+            raise
 
-        raise CQLEngineException("Could not execute query against the cluster")
 
 def execute(query, params={}):
     return connection_pool.execute(query, params)

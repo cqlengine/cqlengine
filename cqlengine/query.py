@@ -6,7 +6,7 @@ from time import time
 from uuid import uuid1
 from cqlengine import BaseContainerColumn, BaseValueManager, Map, columns
 
-from cqlengine.connection import connection_pool, connection_manager, execute
+from cqlengine.connection import cluster, connection_manager, execute
 
 from cqlengine.exceptions import CQLEngineException
 from cqlengine.functions import QueryValue, Token

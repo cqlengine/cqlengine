@@ -123,6 +123,9 @@ class ConnectionPool(object):
         should only return a valid connection that it's actually connected to
         """
         session = cluster.connect()
+
+        #TODO: enable more flexible usage of different row factories
+        session.row_factory = decoder.dict_factory
         return session
 
     def execute(self, query, params, consistency=None):
@@ -146,7 +149,8 @@ def execute(query, params={}):
 
 @contextmanager
 def connection_manager():
+    """ :rtype: ConnectionPool """
     global connection_pool
-    tmp = connection_pool.get()
-    yield tmp
-    connection_pool.put(tmp)
+    # tmp = connection_pool.get()
+    yield connection_pool
+    # connection_pool.put(tmp)

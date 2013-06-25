@@ -9,6 +9,7 @@ import random
 # import cql
 from cassandra import ConsistencyLevel
 from cassandra.cluster import Cluster
+from cassandra import decoder
 from cassandra.query import Query, SimpleStatement
 import logging
 
@@ -60,7 +61,7 @@ def setup(hosts, username=None, password=None, max_connections=10, default_keysp
     if not _hosts:
         raise CQLConnectionError("At least one host required")
 
-    cluster = Cluster(contact_points=hosts)
+    cluster = Cluster([h.name for h in _hosts])
     connection_pool = ConnectionPool(_hosts, username, password, consistency)
 
 
@@ -135,8 +136,9 @@ class ConnectionPool(object):
             results = session.execute(statement, params)
             self.put(session)
             return results
-        except Exception as ex:
-            raise
+        except decoder.ConfigurationException as ex:
+            #TODO: add in more robust error handling
+            raise CQLEngineException(ex.message)
 
 
 def execute(query, params={}):

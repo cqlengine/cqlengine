@@ -714,11 +714,11 @@ class ModelQuerySet(AbstractQuerySet):
                 return instance
             return _construct_instance
 
+        columns = [model._columns[db_map[name]] for name in names]
         if self._flat_values_list:
-            return (lambda values: columns[0].to_python(values[0]))
+            return lambda values: columns[0].to_python(values[0])
         else:
-            # result_cls = namedtuple("{}Tuple".format(self.model.__name__), names)
-            return (lambda values: map(lambda (c, v): c.to_python(v), zip(columns, values)))
+            return lambda values: map(lambda (c, v): c.to_python(v), zip(columns, values))
 
     def _get_ordering_condition(self, colname):
         colname, order_type = super(ModelQuerySet, self)._get_ordering_condition(colname)

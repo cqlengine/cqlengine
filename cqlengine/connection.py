@@ -123,12 +123,9 @@ class ConnectionPool(object):
         should only return a valid connection that it's actually connected to
         """
         session = cluster.connect()
-
-        #TODO: enable more flexible usage of different row factories
-        session.row_factory = decoder.dict_factory
         return session
 
-    def execute(self, query, params, consistency=None):
+    def execute(self, query, params, consistency=None, row_factory=decoder.tuple_factory):
         statement = SimpleStatement(query)
         statement.consistency_level = consistency or self._consistency
         if isinstance(statement.consistency_level, basestring):
@@ -136,6 +133,7 @@ class ConnectionPool(object):
 
         try:
             session = self.get()
+            session.row_factory = row_factory
             results = session.execute(statement, params)
             self.put(session)
             return results
@@ -144,8 +142,8 @@ class ConnectionPool(object):
             raise CQLEngineException(ex.message)
 
 
-def execute(query, params={}):
-    return connection_pool.execute(query, params)
+def execute(query, params={}, row_factory=decoder.tuple_factory):
+    return connection_pool.execute(query, params, row_factory=row_factory)
 
 @contextmanager
 def connection_manager():

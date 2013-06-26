@@ -1,13 +1,9 @@
-from collections import namedtuple
 import copy
 from datetime import datetime
-from hashlib import md5
-from time import time
 from uuid import uuid1
-from cassandra import decoder
-from cqlengine import BaseContainerColumn, BaseValueManager, Map, columns
+from cqlengine import BaseContainerColumn, Map, columns
 
-from cqlengine.connection import cluster, connection_manager, execute, RowResult
+from cqlengine.connection import execute, RowResult
 
 from cqlengine.exceptions import CQLEngineException
 from cqlengine.functions import QueryValue, Token
@@ -549,8 +545,9 @@ class AbstractQuerySet(object):
 
             qs = ' '.join(qs)
 
-            result = execute(qs, self._where_values(), row_factory=decoder.tuple_factory)
-            return result[0][0]
+            count_factory = lambda c, v: v[0][0]
+            result = execute(qs, self._where_values(), row_factory=count_factory)
+            return result
         else:
             return len(self._result_cache)
 

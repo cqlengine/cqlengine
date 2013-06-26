@@ -1,7 +1,10 @@
 import json
 
+from cassandra.decoder import named_tuple_factory
+
 from cqlengine.connection import connection_manager, execute
 from cqlengine.exceptions import CQLEngineException
+
 
 def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3, durable_writes=True, **replication_values):
     """
@@ -14,8 +17,8 @@ def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3,
     :param **replication_values: 1.2 only, additional values to ad to the replication data map
     """
     with connection_manager() as con:
-        keyspaces = con.execute("""SELECT keyspace_name FROM system.schema_keyspaces""", {})
-        if name not in [r['keyspace_name'] for r in keyspaces]:
+        keyspaces = con.execute("""SELECT keyspace_name FROM system.schema_keyspaces""", {}, row_factory=named_tuple_factory)
+        if name not in [r.keyspace_name for r in keyspaces]:
             #try the 1.2 method
             replication_map = {
                 'class': strategy_class,
@@ -35,8 +38,8 @@ def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3,
 
 def delete_keyspace(name):
     with connection_manager() as con:
-        keyspaces = con.execute("""SELECT keyspace_name FROM system.schema_keyspaces""", {})
-        if name in [r['keyspace_name'] for r in keyspaces]:
+        keyspaces = con.execute("""SELECT keyspace_name FROM system.schema_keyspaces""", {}, row_factory=named_tuple_factory)
+        if name in [r.keyspace_name for r in keyspaces]:
             execute("DROP KEYSPACE {}".format(name))
 
 def create_table(model, create_missing_keyspace=True):
@@ -54,7 +57,12 @@ def create_table(model, create_missing_keyspace=True):
         create_keyspace(ks_name)
 
     with connection_manager() as con:
-        tables = con.execute("SELECT columnfamily_name from system.schema_columnfamilies WHERE keyspace_name = %s", [ks_name])
+        tables = con.execute(
+            "SELECT columnfamily_name from system.schema_columnfamilies WHERE keyspace_name = %s",
+            [ks_name],
+            row_factory=named_tuple_factory
+        )
+        tables = [t.columnfamily_name for t in tables]
 
     #check for an existing column family
     #TODO: check system tables instead of using cql thrifteries
@@ -98,10 +106,13 @@ def create_table(model, create_missing_keyspace=True):
 
     #get existing index names, skip ones that already exist
     with connection_manager() as con:
-        idx_names = con.execute("SELECT index_name from system.\"IndexInfo\" WHERE table_name=%s", [raw_cf_name])
+        idx_names = con.execute(
+            "SELECT index_name from system.\"IndexInfo\" WHERE table_name=%s",
+            [raw_cf_name],
+            row_factory=named_tuple_factory
+        )
 
-    idx_names = [i['index_name'] for i in idx_names]
-    idx_names = filter(None, idx_names)
+    idx_names = [i.index_name for i in idx_names]
 
     indexes = [c for n,c in model._columns.items() if c.index]
     if indexes:
@@ -120,9 +131,15 @@ def delete_table(model):
     # don't try to delete non existant tables
     ks_name = model._get_keyspace()
     with connection_manager() as con:
-        tables = con.execute("SELECT columnfamily_name from system.schema_columnfamilies WHERE keyspace_name = %s", [ks_name])
+        tables = con.execute(
+            "SELECT columnfamily_name from system.schema_columnfamilies WHERE keyspace_name = %s",
+            [ks_name],
+            row_factory=named_tuple_factory
+        )
+        tables = [t.columnfamily_name for t in tables]
+
     raw_cf_name = model.column_family_name(include_keyspace=False)
-    if raw_cf_name not in [t['columnfamily_name'] for t in tables]:
+    if raw_cf_name not in tables:
         return
 
     cf_name = model.column_family_name()

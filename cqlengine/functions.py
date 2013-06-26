@@ -9,7 +9,7 @@ class QueryValue(object):
     be passed into .filter() keyword args
     """
 
-    _cql_string = ':{}'
+    _cql_string = '%({})s'
 
     def __init__(self, value, identifier=None):
         self.value = value
@@ -42,7 +42,7 @@ class MinTimeUUID(BaseQueryFunction):
     http://cassandra.apache.org/doc/cql3/CQL.html#timeuuidFun
     """
 
-    _cql_string = 'MinTimeUUID(:{})'
+    _cql_string = 'MinTimeUUID(%({})s)'
 
     def __init__(self, value):
         """
@@ -67,7 +67,7 @@ class MaxTimeUUID(BaseQueryFunction):
     http://cassandra.apache.org/doc/cql3/CQL.html#timeuuidFun
     """
 
-    _cql_string = 'MaxTimeUUID(:{})'
+    _cql_string = 'MaxTimeUUID(%({})s)'
 
     def __init__(self, value):
         """
@@ -104,6 +104,6 @@ class Token(BaseQueryFunction):
         )
 
     def get_cql(self):
-        token_args = ', '.join(':{}'.format(id) for id in self.identifier)
+        token_args = ', '.join('%({})s'.format(id) for id in self.identifier)
         return "token({})".format(token_args)
 

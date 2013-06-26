@@ -130,7 +130,7 @@ class IterableQueryValue(QueryValue):
         return dict((i, column.to_database(v)) for (i, v) in zip(self.identifier, self.value))
 
     def get_cql(self):
-        return '({})'.format(', '.join(':{}'.format(i) for i in self.identifier))
+        return '({})'.format(', '.join('%({})s'.format(i) for i in self.identifier))
 
 class InOperator(EqualsOperator):
     symbol = 'IN'
@@ -827,14 +827,14 @@ class DMLQuery(object):
                         set_statements += col.get_update_statement(val, val_mgr.previous_value, query_values)
                         pass
                     else:
-                        set_statements += ['"{}" = :{}'.format(col.db_field_name, field_ids[col.db_field_name])]
+                        set_statements += ['"{}" = %({})s'.format(col.db_field_name, field_ids[col.db_field_name])]
             qs += [', '.join(set_statements)]
 
             qs += ['WHERE']
 
             where_statements = []
             for name, col in self.model._primary_keys.items():
-                where_statements += ['"{}" = :{}'.format(col.db_field_name, field_ids[col.db_field_name])]
+                where_statements += ['"{}" = %({})s'.format(col.db_field_name, field_ids[col.db_field_name])]
 
             qs += [' AND '.join(where_statements)]
 
@@ -845,7 +845,7 @@ class DMLQuery(object):
             qs += ["INSERT INTO {}".format(self.column_family_name)]
             qs += ["({})".format(', '.join(['"{}"'.format(f) for f in field_names]))]
             qs += ['VALUES']
-            qs += ["({})".format(', '.join([':'+field_ids[f] for f in field_names]))]
+            qs += ["({})".format(', '.join(['%({})s'.format(field_ids[f]) for f in field_names]))]
 
         qs = ' '.join(qs)
 
@@ -880,7 +880,7 @@ class DMLQuery(object):
             for name, col in self.model._primary_keys.items():
                 field_id = uuid1().hex
                 query_values[field_id] = field_values[name]
-                where_statements += ['"{}" = :{}'.format(col.db_field_name, field_id)]
+                where_statements += ['"{}" = %({})s'.format(col.db_field_name, field_id)]
             qs += [' AND '.join(where_statements)]
 
             qs = ' '.join(qs)
@@ -901,7 +901,7 @@ class DMLQuery(object):
         for name, col in self.model._primary_keys.items():
             field_id = uuid1().hex
             field_values[field_id] = col.to_database(getattr(self.instance, name))
-            where_statements += ['"{}" = :{}'.format(col.db_field_name, field_id)]
+            where_statements += ['"{}" = %({})s'.format(col.db_field_name, field_id)]
 
         qs += [' AND '.join(where_statements)]
         qs = ' '.join(qs)

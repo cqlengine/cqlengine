@@ -36,11 +36,13 @@ def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3,
 
             execute(query)
 
+
 def delete_keyspace(name):
     with connection_manager() as con:
         keyspaces = con.execute("""SELECT keyspace_name FROM system.schema_keyspaces""", {}, row_factory=named_tuple_factory)
         if name in [r.keyspace_name for r in keyspaces]:
             execute("DROP KEYSPACE {}".format(name))
+
 
 def create_table(model, create_missing_keyspace=True):
 

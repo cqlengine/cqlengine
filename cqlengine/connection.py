@@ -29,8 +29,11 @@ connection_pool = None
 class CQLConnectionError(CQLEngineException): pass
 
 
+class RowResult(tuple): pass
+
+
 def _column_tuple_factory(colnames, values):
-    return colnames, values
+    return tuple(colnames), [RowResult(v) for v in values]
 
 
 def setup(hosts, username=None, password=None, max_connections=10, default_keyspace=None, consistency='ONE'):

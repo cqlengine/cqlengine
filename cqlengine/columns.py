@@ -518,7 +518,7 @@ class Set(BaseContainerColumn):
         elif prev is None or not any({v in prev for v in val}):
             field = uuid1().hex
             ctx[field] = self.Quoter(val)
-            return ['"{}" = :{}'.format(self.db_field_name, field)]
+            return ['"{}" = %({})s'.format(self.db_field_name, field)]
         else:
             # partial update time
             to_create = val - prev
@@ -528,12 +528,12 @@ class Set(BaseContainerColumn):
             if to_create:
                 field_id = uuid1().hex
                 ctx[field_id] = self.Quoter(to_create)
-                statements += ['"{0}" = "{0}" + :{1}'.format(self.db_field_name, field_id)]
+                statements += ['"{0}" = "{0}" + %({1})s'.format(self.db_field_name, field_id)]
 
             if to_delete:
                 field_id = uuid1().hex
                 ctx[field_id] = self.Quoter(to_delete)
-                statements += ['"{0}" = "{0}" - :{1}'.format(self.db_field_name, field_id)]
+                statements += ['"{0}" = "{0}" - %({1})s'.format(self.db_field_name, field_id)]
 
             return statements
 
@@ -581,7 +581,7 @@ class List(BaseContainerColumn):
         def _insert():
             field_id = uuid1().hex
             values[field_id] = self.Quoter(val)
-            return ['"{}" = :{}'.format(self.db_field_name, field_id)]
+            return ['"{}" = %({})s'.format(self.db_field_name, field_id)]
 
         if val is None or val == prev:
             return []
@@ -624,12 +624,12 @@ class List(BaseContainerColumn):
                 # it here, or have it inserted in reverse
                 prepend.reverse()
                 values[field_id] = self.Quoter(prepend)
-                statements += ['"{0}" = :{1} + "{0}"'.format(self.db_field_name, field_id)]
+                statements += ['"{0}" = %({1})s + "{0}"'.format(self.db_field_name, field_id)]
 
             if append:
                 field_id = uuid1().hex
                 values[field_id] = self.Quoter(append)
-                statements += ['"{0}" = "{0}" + :{1}'.format(self.db_field_name, field_id)]
+                statements += ['"{0}" = "{0}" + %({1})s'.format(self.db_field_name, field_id)]
 
             return statements
 
@@ -716,7 +716,7 @@ class Map(BaseContainerColumn):
             val_id = uuid1().hex
             ctx[key_id] = k
             ctx[val_id] = v
-            statements += ['"{}"[:{}] = :{}'.format(self.db_field_name, key_id, val_id)]
+            statements += ['"{}"[%({})s] = %({})s'.format(self.db_field_name, key_id, val_id)]
 
         return statements
 
@@ -741,7 +741,7 @@ class Map(BaseContainerColumn):
         for key in del_keys:
             field_id = uuid1().hex
             ctx[field_id] = key
-            del_statements += ['"{}"[:{}]'.format(self.db_field_name, field_id)]
+            del_statements += ['"{}"[%({})s]'.format(self.db_field_name, field_id)]
 
         return del_statements
 

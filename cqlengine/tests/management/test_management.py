@@ -1,3 +1,5 @@
+from unittest import skip
+
 from cqlengine.exceptions import CQLEngineException
 from cqlengine.management import create_table, delete_table
 from cqlengine.tests.base import BaseCassEngTestCase
@@ -8,8 +10,7 @@ from mock import Mock, MagicMock, MagicProxy, patch
 from cqlengine import management
 from cqlengine.tests.query.test_queryset import TestModel
 
-from cql.thrifteries import ThriftConnection
-
+@skip('cassandra driver handles pooling and failover')
 class ConnectionPoolFailoverTestCase(BaseCassEngTestCase):
     """Test cassandra connection pooling."""
 
@@ -35,7 +36,6 @@ class ConnectionPoolFailoverTestCase(BaseCassEngTestCase):
 
         ok_conn = MagicMock()
         ok_conn.return_value = ok_cur
-
 
         returns = [CQLEngineException(), ok_conn]
 

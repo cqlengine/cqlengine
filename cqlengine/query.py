@@ -356,8 +356,11 @@ class AbstractQuerySet(object):
         if self._batch:
             raise CQLEngineException("Only inserts, updates, and deletes are available in batch mode")
         if self._result_cache is None:
-            self._result_cache = execute(self._select_query(), self._where_values())
-            self._construct_result = self._create_result_constructor()
+            self._cur = execute(self._select_query(), self._where_values())
+            self._result_cache = [None]*self._cur.rowcount
+            if self._cur.description:
+                names = [i[0] for i in self._cur.description]
+                self._construct_result = self._create_result_constructor(names)
 
     def _fill_result_cache_to_idx(self, idx):
         self._execute_query()
@@ -655,12 +658,12 @@ class SimpleQuerySet(AbstractQuerySet):
         """ Returns the fields to be returned by the select query """
         return 'SELECT *'
 
-    def _create_result_constructor(self):
+    def _create_result_constructor(self, names):
         """
         Returns a function that will be used to instantiate query results
         """
         def _construct_instance(values):
-            return ResultObject(values)
+            return ResultObject(zip(names, values))
         return _construct_instance
 
 class ModelQuerySet(AbstractQuerySet):
@@ -702,7 +705,7 @@ class ModelQuerySet(AbstractQuerySet):
         db_fields = [self.model._columns[f].db_field_name for f in fields]
         return 'SELECT {}'.format(', '.join(['"{}"'.format(f) for f in db_fields]))
 
-    def _create_result_constructor(self):
+    def _create_result_constructor(self, names):
         """
         Returns a function that will be used to instantiate query results
         """
@@ -710,7 +713,7 @@ class ModelQuerySet(AbstractQuerySet):
         db_map = model._db_map
         if not self._values_list:
             def _construct_instance(values):
-                field_dict = dict((db_map.get(k, k), v) for k, v in values)
+                field_dict = dict((db_map.get(k, k), v) for k, v in zip(names, values))
                 instance = model(**field_dict)
                 instance._is_persisted = True
                 return instance

@@ -4,25 +4,18 @@
 
 from collections import namedtuple
 import Queue
-import random
 
-# import cql
 from cassandra import ConsistencyLevel
 from cassandra.cluster import Cluster
 from cassandra import decoder
-from cassandra.query import Query, SimpleStatement
+from cassandra.query import SimpleStatement
 import logging
 
-from copy import copy
 from cqlengine.exceptions import CQLEngineException
 
 from contextlib import contextmanager
 
-from thrift.transport.TTransport import TTransportException
-
 LOG = logging.getLogger('cqlengine.cql')
-
-class CQLConnectionError(CQLEngineException): pass
 
 Host = namedtuple('Host', ['name', 'port'])
 
@@ -31,6 +24,14 @@ _max_connections = 10
 # global connection pool
 cluster = None
 connection_pool = None
+
+
+class CQLConnectionError(CQLEngineException): pass
+
+
+def _column_tuple_factory(colnames, values):
+    return colnames, values
+
 
 def setup(hosts, username=None, password=None, max_connections=10, default_keyspace=None, consistency='ONE'):
     """
@@ -125,7 +126,7 @@ class ConnectionPool(object):
         session = cluster.connect()
         return session
 
-    def execute(self, query, params, consistency=None, row_factory=decoder.tuple_factory):
+    def execute(self, query, params, consistency=None, row_factory=_column_tuple_factory):
         statement = SimpleStatement(query)
         statement.consistency_level = consistency or self._consistency
         if isinstance(statement.consistency_level, basestring):
@@ -142,7 +143,7 @@ class ConnectionPool(object):
             raise CQLEngineException(ex.message)
 
 
-def execute(query, params={}, row_factory=decoder.tuple_factory):
+def execute(query, params={}, row_factory=_column_tuple_factory):
     return connection_pool.execute(query, params, row_factory=row_factory)
 
 @contextmanager

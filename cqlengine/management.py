@@ -110,7 +110,7 @@ def create_table(model, create_missing_keyspace=True):
     with connection_manager() as con:
         idx_names = con.execute(
             "SELECT index_name from system.\"IndexInfo\" WHERE table_name=%s",
-            [raw_cf_name],
+            [ks_name],
             row_factory=named_tuple_factory
         )
 
@@ -119,8 +119,10 @@ def create_table(model, create_missing_keyspace=True):
     indexes = [c for n,c in model._columns.items() if c.index]
     if indexes:
         for column in indexes:
-            if column.db_index_name in idx_names: continue
-            qs = ['CREATE INDEX index_{}_{}'.format(raw_cf_name, column.db_field_name)]
+            idx_name = 'index_{}_{}'.format(raw_cf_name, column.db_field_name)
+            if '{}.{}'.format(raw_cf_name, idx_name) in idx_names:
+                continue
+            qs = ['CREATE INDEX {}'.format(idx_name)]
             qs += ['ON {}'.format(cf_name)]
             qs += ['("{}")'.format(column.db_field_name)]
             qs = ' '.join(qs)

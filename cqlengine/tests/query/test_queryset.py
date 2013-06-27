@@ -445,7 +445,6 @@ class TestQuerySetValidation(BaseQuerySetUsage):
             q = TestModel.objects(test_id__gt=0)
             list([i for i in q])
 
-
     def test_indexed_field_can_be_queried(self):
         """
         Tests that queries on an indexed field will work without any primary key relations specified

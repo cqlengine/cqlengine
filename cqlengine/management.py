@@ -1,6 +1,6 @@
 import json
 
-from cassandra.decoder import named_tuple_factory
+from cassandra.decoder import named_tuple_factory, InvalidRequestException
 
 from cqlengine.connection import connection_manager, execute
 from cqlengine.exceptions import CQLEngineException
@@ -106,28 +106,33 @@ def create_table(model, create_missing_keyspace=True):
             if "Cannot add already existing column family" not in unicode(ex):
                 raise
 
-    #get existing index names, skip ones that already exist
-    with connection_manager() as con:
-        idx_names = con.execute(
-            "SELECT index_name from system.\"IndexInfo\" WHERE table_name=%s",
-            [ks_name],
-            row_factory=named_tuple_factory
-        )
-
-    idx_names = [i.index_name for i in idx_names]
+    # checking the index table returns false positives
+    # TODO: find a more reliable way of detecting existing indexes
+    # #get existing index names, skip ones that already exist
+    # with connection_manager() as con:
+    #     idx_names = con.execute(
+    #         "SELECT index_name from system.\"IndexInfo\" WHERE table_name=%s",
+    #         [ks_name],
+    #         row_factory=named_tuple_factory
+    #     )
+    #
+    # idx_names = [i.index_name for i in idx_names]
 
     indexes = [c for n,c in model._columns.items() if c.index]
     if indexes:
         for column in indexes:
             idx_name = 'index_{}_{}'.format(raw_cf_name, column.db_field_name)
-            if '{}.{}'.format(raw_cf_name, idx_name) in idx_names:
-                continue
             qs = ['CREATE INDEX {}'.format(idx_name)]
             qs += ['ON {}'.format(cf_name)]
             qs += ['("{}")'.format(column.db_field_name)]
             qs = ' '.join(qs)
 
-            execute(qs)
+            try:
+                execute(qs)
+            except InvalidRequestException:
+                # checking the index table returns false positives
+                # TODO: find a more reliable way of detecting existing indexes
+                pass
 
 
 def delete_table(model):
@@ -148,4 +153,3 @@ def delete_table(model):
 
     cf_name = model.column_family_name()
     execute('drop table {};'.format(cf_name))
-

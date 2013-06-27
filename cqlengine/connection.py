@@ -109,7 +109,7 @@ class ConnectionPool(object):
 
     def put(self, conn):
         """
-        Returns a connection to the queue freeing it up for other queries to
+        Returns a session into the queue, freeing it up for other queries to
         use.
 
         :param conn: The connection to be released
@@ -122,11 +122,7 @@ class ConnectionPool(object):
             self._queue.put(conn)
 
     def _create_connection(self):
-        """
-        Creates a new connection for the connection pool.
-
-        should only return a valid connection that it's actually connected to
-        """
+        """ Creates and returns a new session object """
         session = cluster.connect()
         return session
 
@@ -150,10 +146,16 @@ class ConnectionPool(object):
 def execute(query, params={}, row_factory=_column_tuple_factory):
     return connection_pool.execute(query, params, row_factory=row_factory)
 
+# FIXME: deprecated
 @contextmanager
 def connection_manager():
-    """ :rtype: ConnectionPool """
-    global connection_pool
-    # tmp = connection_pool.get()
+    """
+    DEPRECATED
+
+    This is no longer neccesary since we're not
+    passing cursors around, leaving it in for
+    backwards compatibility
+
+    :rtype: ConnectionPool
+    """
     yield connection_pool
-    # connection_pool.put(tmp)

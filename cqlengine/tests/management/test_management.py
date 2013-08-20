@@ -1,10 +1,9 @@
+from mock import MagicMock, patch
+
 from cqlengine.exceptions import CQLEngineException
 from cqlengine.management import create_table, delete_table, get_fields
 from cqlengine.tests.base import BaseCassEngTestCase
-
 from cqlengine.connection import ConnectionPool, Host
-
-from mock import MagicMock, patch
 from cqlengine import management
 from cqlengine.tests.query.test_queryset import TestModel
 from cqlengine.models import Model
@@ -140,4 +139,5 @@ class AddColumnTest(BaseCassEngTestCase):
         create_table(FourthModel)
         fields = get_fields(FirstModel)
         self.assertEqual(len(fields), 4)
+
 

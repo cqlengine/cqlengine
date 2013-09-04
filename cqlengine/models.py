@@ -10,6 +10,9 @@ from cqlengine.query import MultipleObjectsReturned as _MultipleObjectsReturned
 
 class ModelDefinitionException(ModelException): pass
 
+
+class PolyMorphicModelException(ModelException): pass
+
 DEFAULT_KEYSPACE = 'cqlengine'
 
 
@@ -46,7 +49,18 @@ class QuerySetDescriptor(object):
         """ :rtype: ModelQuerySet """
         if model.__abstract__:
             raise CQLEngineException('cannot execute queries against abstract models')
-        return model.__queryset__(model)
+        queryset = model.__queryset__(model)
+
+        # if this is a concrete polymorphic model, and the polymorphic
+        # key is an indexed column, add a filter clause to only return
+        # logical rows of the proper type
+        if model._is_polymorphic and not model._is_polymorphic_base:
+            name, column = model._polymorphic_column_name, model._polymorphic_column
+            if column.partition_key or column.index:
+                # look for existing poly types
+                return queryset.filter(**{name: model.__polymorphic_key__})
+
+        return queryset
 
     def __call__(self, *args, **kwargs):
         """
@@ -142,6 +156,8 @@ class BaseModel(object):
     #the keyspace for this model
     __keyspace__ = None
 
+    #polymorphism options
+    __polymorphic_key__ = None
 
     # compaction options
     __compaction__ = None
@@ -183,6 +199,61 @@ class BaseModel(object):
         # that update should be used when persisting changes
         self._is_persisted = False
         self._batch = None
+
+    @classmethod
+    def _discover_polymorphic_submodels(cls):
+        if not cls._is_polymorphic_base:
+            raise ModelException('_discover_polymorphic_submodels can only be called on polymorphic base classes')
+        def _discover(klass):
+            if not klass._is_polymorphic_base and klass.__polymorphic_key__ is not None:
+                cls._polymorphic_map[klass.__polymorphic_key__] = klass
+            for subklass in klass.__subclasses__():
+                _discover(subklass)
+        _discover(cls)
+
+    @classmethod
+    def _get_model_by_polymorphic_key(cls, key):
+        if not cls._is_polymorphic_base:
+            raise ModelException('_get_model_by_polymorphic_key can only be called on polymorphic base classes')
+        return cls._polymorphic_map.get(key)
+
+    @classmethod
+    def _construct_instance(cls, names, values):
+        """
+        method used to construct instances from query results
+        this is where polymorphic deserialization occurs
+        """
+        field_dict = dict((cls._db_map.get(k, k), v) for k, v in zip(names, values))
+        if cls._is_polymorphic:
+            poly_key = field_dict.get(cls._polymorphic_column_name)
+
+            if poly_key is None:
+                raise PolyMorphicModelException('polymorphic key was not found in values')
+
+            poly_base = cls if cls._is_polymorphic_base else cls._polymorphic_base
+
+            klass = poly_base._get_model_by_polymorphic_key(poly_key)
+            if klass is None:
+                poly_base._discover_polymorphic_submodels()
+                klass = poly_base._get_model_by_polymorphic_key(poly_key)
+                if klass is None:
+                    raise PolyMorphicModelException(
+                        'unrecognized polymorphic key {} for class {}'.format(poly_key, poly_base.__name__)
+                    )
+
+            if not issubclass(klass, cls):
+                raise PolyMorphicModelException(
+                    '{} is not a subclass of {}'.format(klass.__name__, cls.__name__)
+                )
+
+            field_dict = {k: v for k, v in field_dict.items() if k in klass._columns.keys()}
+
+        else:
+            klass = cls
+
+        instance = klass(**field_dict)
+        instance._is_persisted = True
+        return instance
 
     def _can_update(self):
         """
@@ -241,6 +312,10 @@ class BaseModel(object):
         if cls.__table_name__:
             cf_name = cls.__table_name__.lower()
         else:
+            # get polymorphic base table names if model is polymorphic
+            if cls._is_polymorphic and not cls._is_polymorphic_base:
+                return cls._polymorphic_base.column_family_name(include_keyspace=include_keyspace)
+
             camelcase = re.compile(r'([a-z])([A-Z])')
             ccase = lambda s: camelcase.sub(lambda v: '{}_{}'.format(v.group(1), v.group(2).lower()), s)
 
@@ -282,6 +357,14 @@ class BaseModel(object):
         return cls.objects.get(*args, **kwargs)
 
     def save(self):
+
+        # handle polymorphic models
+        if self._is_polymorphic:
+            if self._is_polymorphic_base:
+                raise PolyMorphicModelException('cannot save polymorphic base model')
+            else:
+                setattr(self, self._polymorphic_column_name, self.__polymorphic_key__)
+
         is_new = self.pk is None
         self.validate()
         self.__dmlquery__(self.__class__, self, batch=self._batch).save()
@@ -328,6 +411,9 @@ class ModelMetaClass(type):
         #short circuit __abstract__ inheritance
         is_abstract = attrs['__abstract__'] = attrs.get('__abstract__', False)
 
+        #short circuit __polymorphic_key__ inheritance
+        attrs['__polymorphic_key__'] = attrs.get('__polymorphic_key__', None)
+
         def _transform_column(col_name, col_obj):
             column_dict[col_name] = col_obj
             if col_obj.primary_key:
@@ -339,11 +425,35 @@ class ModelMetaClass(type):
         column_definitions = [(k,v) for k,v in attrs.items() if isinstance(v, columns.Column)]
         column_definitions = sorted(column_definitions, lambda x,y: cmp(x[1].position, y[1].position))
 
+        is_polymorphic_base = any([c[1].polymorphic_key for c in column_definitions])
+
         column_definitions = inherited_columns.items() + column_definitions
+
+        polymorphic_columns = [c for c in column_definitions if c[1].polymorphic_key]
+        is_polymorphic = len(polymorphic_columns) > 0
+        if len(polymorphic_columns) > 1:
+            raise ModelDefinitionException('only one polymorphic_key can be defined in a model, {} found'.format(len(polymorphic_columns)))
+
+        polymorphic_column_name, polymorphic_column = polymorphic_columns[0] if polymorphic_columns else (None, None)
+
+        if isinstance(polymorphic_column, (columns.BaseContainerColumn, columns.Counter)):
+            raise ModelDefinitionException('counter and container columns cannot be used for polymorphic keys')
+
+        # find polymorphic base class
+        polymorphic_base = None
+        if is_polymorphic and not is_polymorphic_base:
+            def _get_polymorphic_base(bases):
+                for base in bases:
+                    if getattr(base, '_is_polymorphic_base', False):
+                        return base
+                    klass = _get_polymorphic_base(base.__bases__)
+                    if klass:
+                        return klass
+            polymorphic_base = _get_polymorphic_base(bases)
 
         defined_columns = OrderedDict(column_definitions)
 
-        #prepend primary key if one hasn't been defined
+        # check for primary key
         if not is_abstract and not any([v.primary_key for k,v in column_definitions]):
             raise ModelDefinitionException("At least 1 primary key is required.")
 
@@ -356,7 +466,7 @@ class ModelMetaClass(type):
 
         #TODO: check that the defined columns don't conflict with any of the Model API's existing attributes/methods
         #transform column definitions
-        for k,v in column_definitions:
+        for k, v in column_definitions:
             # counter column primary keys are not allowed
             if (v.primary_key or v.partition_key) and isinstance(v, (columns.Counter, columns.BaseContainerColumn)):
                 raise ModelDefinitionException('counter columns and container columns cannot be used as primary keys')
@@ -412,6 +522,14 @@ class ModelMetaClass(type):
         attrs['_partition_keys'] = partition_keys
         attrs['_clustering_keys'] = clustering_keys
         attrs['_has_counter'] = len(counter_columns) > 0
+
+        # add polymorphic management attributes
+        attrs['_is_polymorphic_base'] = is_polymorphic_base
+        attrs['_is_polymorphic'] = is_polymorphic
+        attrs['_polymorphic_base'] = polymorphic_base
+        attrs['_polymorphic_column'] = polymorphic_column
+        attrs['_polymorphic_column_name'] = polymorphic_column_name
+        attrs['_polymorphic_map'] = {} if is_polymorphic_base else None
 
         #setup class exceptions
         DoesNotExistBase = None

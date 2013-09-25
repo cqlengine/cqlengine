@@ -362,7 +362,7 @@ class BaseModel(object):
         for v in self._values.values():
             v.reset_previous_value()
 
-    def save(self):
+    def save(self, update_only=False):
 
         # handle polymorphic models
         if self._is_polymorphic:
@@ -372,7 +372,8 @@ class BaseModel(object):
                 setattr(self, self._polymorphic_column_name, self.__polymorphic_key__)
 
         self.validate()
-        self.__dmlquery__(self.__class__, self, batch=self._batch).save()
+        self.__dmlquery__(self.__class__, self, batch=self._batch)\
+                .save(update_only=update_only)
         self._mark_as_persisted()
 
         return self

@@ -248,7 +248,7 @@ class BaseModel(object):
             klass = cls
 
         instance = klass(**field_dict)
-        instance._is_persisted = True
+        instance._mark_as_persisted()
         return instance
 
     def _can_update(self):
@@ -355,6 +355,13 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
+    def _mark_as_persisted(self):
+        """ Set flags to indicate that the model reflects the current db state
+        """
+        self._is_persisted = True
+        for v in self._values.values():
+            v.reset_previous_value()
+
     def save(self):
 
         # handle polymorphic models
@@ -364,14 +371,9 @@ class BaseModel(object):
             else:
                 setattr(self, self._polymorphic_column_name, self.__polymorphic_key__)
 
-        is_new = self.pk is None
         self.validate()
         self.__dmlquery__(self.__class__, self, batch=self._batch).save()
-
-        #reset the value managers
-        for v in self._values.values():
-            v.reset_previous_value()
-        self._is_persisted = True
+        self._mark_as_persisted()
 
         return self
 

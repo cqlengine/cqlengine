@@ -13,7 +13,7 @@ class BaseValueManager(object):
     def __init__(self, instance, column, value):
         self.instance = instance
         self.column = column
-        self.previous_value = copy(value)
+        self.previous_value = None
         self.value = value
 
     @property

@@ -763,7 +763,7 @@ class DMLQuery(object):
         self._batch = batch_obj
         return self
 
-    def save(self):
+    def save(self, update_only=False):
         """
         Creates / updates a row.
         This is a blind insert call.
@@ -791,7 +791,7 @@ class DMLQuery(object):
         query_values = {field_ids[n]:field_values[n] for n in field_names}
 
         qs = []
-        if self.instance._has_counter or self.instance._can_update():
+        if self.instance._has_counter or self.instance._can_update() or update_only:
             qs += ["UPDATE {}".format(self.column_family_name)]
             qs += ["SET"]
 

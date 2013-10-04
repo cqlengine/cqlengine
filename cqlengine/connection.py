@@ -216,7 +216,9 @@ class ConnectionPool(object):
                 self.put(con)
                 return QueryResult(columns, results)
             except CQLConnectionError as ex:
-                raise CQLEngineException("Could not execute query against the cluster")
+                message = ("Could not execute query against the cluster. "
+                           "Failed with error '{}'".format(unicode(ex)))
+                raise CQLEngineException(message)
             except cql.ProgrammingError as ex:
                 raise CQLEngineException(unicode(ex))
             except TTransportException:

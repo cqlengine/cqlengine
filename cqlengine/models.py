@@ -181,6 +181,9 @@ class BaseModel(object):
 
     __read_repair_chance__ = 0.1
 
+    # global ttl http://www.datastax.com/documentation/cql/3.1/webhelp/index.html#cql/cql_using/use_ttl_t.html
+    __ttl__ = None
+
     def __init__(self, **values):
         self._values = {}
 
@@ -355,7 +358,18 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    def save(self):
+    def _get_actual_ttl(self, is_new, ttl=None,):
+        """
+        Return actual ttl
+
+        :rtype: int or None
+        """
+        result_ttl = ttl or (is_new and self.__ttl__)
+        if result_ttl and not isinstance(result_ttl, (int,)):
+            raise ModelDefinitionException('TTL must be an integer')
+        return result_ttl
+
+    def save(self, ttl=None):
 
         # handle polymorphic models
         if self._is_polymorphic:
@@ -365,8 +379,9 @@ class BaseModel(object):
                 setattr(self, self._polymorphic_column_name, self.__polymorphic_key__)
 
         is_new = self.pk is None
+        ttl = self._get_actual_ttl(is_new, ttl)
         self.validate()
-        self.__dmlquery__(self.__class__, self, batch=self._batch).save()
+        self.__dmlquery__(self.__class__, self, batch=self._batch).save(ttl=ttl)
 
         #reset the value managers
         for v in self._values.values():

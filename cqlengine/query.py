@@ -763,7 +763,14 @@ class DMLQuery(object):
         self._batch = batch_obj
         return self
 
-    def save(self):
+    def get_ttl_statement(self, ttl):
+        """
+        Return ttl statement
+        :rtype: str
+        """
+        return "USING TTL {}".format(ttl)
+
+    def save(self, ttl=None):
         """
         Creates / updates a row.
         This is a blind insert call.
@@ -790,9 +797,15 @@ class DMLQuery(object):
         field_values = dict(value_pairs)
         query_values = {field_ids[n]:field_values[n] for n in field_names}
 
+        ttl_statement = None
+        if ttl:
+            ttl_statement = self.get_ttl_statement(ttl)
+
         qs = []
         if self.instance._has_counter or self.instance._can_update():
             qs += ["UPDATE {}".format(self.column_family_name)]
+            if ttl_statement:
+                qs += [ttl_statement]
             qs += ["SET"]
 
             set_statements = []
@@ -830,6 +843,8 @@ class DMLQuery(object):
             qs += ["({})".format(', '.join(['"{}"'.format(f) for f in field_names]))]
             qs += ['VALUES']
             qs += ["({})".format(', '.join([':'+field_ids[f] for f in field_names]))]
+            if ttl_statement:
+                qs += [ttl_statement]
 
         qs = ' '.join(qs)
 

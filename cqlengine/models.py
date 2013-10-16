@@ -358,7 +358,7 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    def _get_actual_ttl(self, is_new, ttl=None,):
+    def _get_actual_ttl(self, is_new, ttl=None):
         """
         Return actual ttl
 

@@ -603,8 +603,8 @@ class AbstractQuerySet(object):
         """ Don't load these fields for the returned query """
         return self._only_or_defer('defer', fields)
 
-    def create(self, **kwargs):
-        return self.model(**kwargs).batch(self._batch).save()
+    def create(self, ttl=None, **kwargs):
+        return self.model(**kwargs).batch(self._batch).save(ttl=ttl)
 
     #----delete---
     def delete(self, columns=[]):
@@ -763,13 +763,6 @@ class DMLQuery(object):
         self._batch = batch_obj
         return self
 
-    def get_ttl_statement(self, ttl):
-        """
-        Return ttl statement
-        :rtype: str
-        """
-        return "USING TTL {}".format(ttl)
-
     def save(self, ttl=None):
         """
         Creates / updates a row.
@@ -799,7 +792,7 @@ class DMLQuery(object):
 
         ttl_statement = None
         if ttl:
-            ttl_statement = self.get_ttl_statement(ttl)
+            ttl_statement = self._make_ttl_statement(ttl)
 
         qs = []
         if self.instance._has_counter or self.instance._can_update():
@@ -910,4 +903,41 @@ class DMLQuery(object):
         else:
             execute(qs, field_values)
 
+    def _make_ttl_statement(self, ttl):
+        """
+        Return ttl statement for query
+
+        :rtype: str
+        """
+        return "USING TTL {}".format(ttl)
+
+    def get_ttl(self, column_name=None):
+        """
+        Return ttl of row
+
+        :rtype: int or None
+        """
+        if self.instance is None:
+            raise CQLEngineException("DML Query intance attribute is None")
+        assert type(self.instance) == self.model
+
+        if column_name is None:
+            for col_name, col in self.instance._columns.items():
+                if not col.is_primary_key:
+                    column_name = col_name
+        qs = ['SELECT TTL("{}")'.format(column_name)]
+        qs += ['FROM {}'.format(self.column_family_name)]
+        qs += ['WHERE']
+        field_values = {}
+        where_statements = []
+        for name, col in self.model._primary_keys.items():
+            field_id = uuid4().hex
+            field_values[field_id] = col.to_database(getattr(self.instance, name))
+            where_statements += ['"{}" = :{}'.format(col.db_field_name, field_id)]
+        qs += [' AND '.join(where_statements)]
+        query = ' '.join(qs)
+        result = execute(query, field_values)
+        if result:
+            return result[1][0][0]
+        return None
 

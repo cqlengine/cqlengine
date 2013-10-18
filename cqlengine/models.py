@@ -181,9 +181,6 @@ class BaseModel(object):
 
     __read_repair_chance__ = 0.1
 
-    # global ttl http://www.datastax.com/documentation/cql/3.1/webhelp/index.html#cql/cql_using/use_ttl_t.html
-    __ttl__ = None
-
     def __init__(self, **values):
         self._values = {}
 
@@ -340,11 +337,11 @@ class BaseModel(object):
         return values
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, ttl=None, **kwargs):
         extra_columns = set(kwargs.keys()) - set(cls._columns.keys())
         if extra_columns:
             raise ValidationError("Incorrect columns passed: {}".format(extra_columns))
-        return cls.objects.create(**kwargs)
+        return cls.objects.create(ttl=ttl, **kwargs)
 
     @classmethod
     def all(cls):
@@ -358,18 +355,9 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    def _get_actual_ttl(self, is_new, ttl=None):
-        """
-        Return actual ttl
-
-        :rtype: int or None
-        """
-        result_ttl = ttl or (is_new and self.__ttl__)
-        if result_ttl and not isinstance(result_ttl, (int,)):
-            raise ModelDefinitionException('TTL must be an integer')
-        return result_ttl
-
     def save(self, ttl=None):
+        if ttl and not isinstance(ttl, int):
+            raise ModelDefinitionException('TTL must be an integer')
 
         # handle polymorphic models
         if self._is_polymorphic:
@@ -379,7 +367,6 @@ class BaseModel(object):
                 setattr(self, self._polymorphic_column_name, self.__polymorphic_key__)
 
         is_new = self.pk is None
-        ttl = self._get_actual_ttl(is_new, ttl)
         self.validate()
         self.__dmlquery__(self.__class__, self, batch=self._batch).save(ttl=ttl)
 
@@ -401,6 +388,12 @@ class BaseModel(object):
     def _inst_batch(self, batch):
         self._batch = batch
         return self
+
+    def get_ttl(self, column_name=None):
+        """
+        Return ttl of row
+        """
+        return self.__dmlquery__(self.__class__, self, batch=self._batch).get_ttl(column_name)
 
     batch = hybrid_classmethod(_class_batch, _inst_batch)
 

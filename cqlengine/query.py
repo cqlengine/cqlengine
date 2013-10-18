@@ -763,7 +763,7 @@ class DMLQuery(object):
         self._batch = batch_obj
         return self
 
-    def save(self, ttl=None):
+    def save(self, **kwargs):
         """
         Creates / updates a row.
         This is a blind insert call.
@@ -790,8 +790,11 @@ class DMLQuery(object):
         field_values = dict(value_pairs)
         query_values = {field_ids[n]:field_values[n] for n in field_names}
 
+        ttl = kwargs.get('ttl', None)
         ttl_statement = None
         if ttl:
+            if not isinstance(ttl, int):
+                raise ValueError('TTL must be an integer')
             ttl_statement = self._make_ttl_statement(ttl)
 
         qs = []

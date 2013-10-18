@@ -40,6 +40,9 @@ class TestModelTtl(BaseCassEngTestCase):
         for inst in instances:
             self.assertIsNotNone(inst.id)
 
+        with self.assertRaises(ValueError):
+            tm1.save(ttl='abdc')
+
     def test_model_get_ttl(self):
         """
         Tests that get ttl value after save with ttl
@@ -50,10 +53,8 @@ class TestModelTtl(BaseCassEngTestCase):
         self.assertLessEqual(tm.get_ttl(), ttl_value)
         self.assertLessEqual(tm.get_ttl('text'), ttl_value)
 
-        def get_ttl_by_undef_column():
+        with self.assertRaises(CQLEngineException):
             tm.get_ttl('undef_col')
-
-        self.assertRaises(CQLEngineException, get_ttl_by_undef_column)
 
     def test_model_without_ttl(self):
         """

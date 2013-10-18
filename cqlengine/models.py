@@ -355,10 +355,7 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    def save(self, ttl=None):
-        if ttl and not isinstance(ttl, int):
-            raise ModelDefinitionException('TTL must be an integer')
-
+    def save(self, **kwargs):
         # handle polymorphic models
         if self._is_polymorphic:
             if self._is_polymorphic_base:
@@ -368,7 +365,7 @@ class BaseModel(object):
 
         is_new = self.pk is None
         self.validate()
-        self.__dmlquery__(self.__class__, self, batch=self._batch).save(ttl=ttl)
+        self.__dmlquery__(self.__class__, self, batch=self._batch).save(**kwargs)
 
         #reset the value managers
         for v in self._values.values():

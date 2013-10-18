@@ -14,7 +14,7 @@ class BaseCassEngTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         super(BaseCassEngTestCase, cls).setUpClass()
-        connection.setup([CASSANDRA_TEST_HOST], username='cassandra', password='cassandra', default_keyspace='cqlengine_test')
+        connection.setup([CASSANDRA_TEST_HOST], default_keyspace='cqlengine_test')
 
     def assertHasAttr(self, obj, attr):
         self.assertTrue(hasattr(obj, attr),

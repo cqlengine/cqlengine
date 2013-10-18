@@ -1,13 +1,14 @@
 from uuid import uuid4
 import random
-import time
 
 from cqlengine.tests.base import BaseCassEngTestCase
+
 from cqlengine.management import create_table
 from cqlengine.management import delete_table
 from cqlengine.models import Model
 from cqlengine import columns
 from cqlengine.exceptions import CQLEngineException
+
 
 class TestModel(Model):
     id      = columns.UUID(primary_key=True, default=lambda:uuid4())

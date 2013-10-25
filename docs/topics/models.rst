@@ -137,6 +137,16 @@ Model Methods
     .. method:: delete()
 
         Deletes the object from the database.
+
+
+    .. method:: batch(batch_object)
+
+        Sets the batch object to run instance updates and inserts queries with.
+
+    .. method:: ttl(ttl_in_sec)
+
+        Sets the ttl values to run instance updates and inserts queries with.
+
     -- method:: update(**values)
 
 
@@ -144,6 +154,7 @@ Model Methods
         for updating, or you can call without values to execute an update against any modified
         fields. If no fields on the model have been modified since loading, no query will be
         performed. Model validation is performed normally.
+
 
 Model Attributes
 ================

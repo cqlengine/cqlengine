@@ -133,6 +133,18 @@ Model Methods
             #saves it to Cassandra
             person.save()
 
+    .. method:: save(ttl)
+
+        Saves an object to the database with TTL value
+        More information about TTL read at http://www.datastax.com/documentation/cql/3.1/webhelp/index.html#cql/cql_using/use_ttl_t.html
+
+        .. code-block:: python
+
+            #create a person instance with custom TTL
+            person = Person(first_name='Kimberly', last_name='Eggleston')
+            #saves it to Cassandra with TTL 800 seconds
+            person.save(ttl=800)
+
 
     .. method:: delete()
 
@@ -152,7 +164,6 @@ Model Attributes
     .. attribute:: Model.__keyspace__
 
         *Optional.* Sets the name of the keyspace used by this model. Defaults to cqlengine
-
 
 Table Polymorphism
 ==================

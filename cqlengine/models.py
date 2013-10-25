@@ -337,11 +337,11 @@ class BaseModel(object):
         return values
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, ttl=None, **kwargs):
         extra_columns = set(kwargs.keys()) - set(cls._columns.keys())
         if extra_columns:
             raise ValidationError("Incorrect columns passed: {}".format(extra_columns))
-        return cls.objects.create(**kwargs)
+        return cls.objects.create(ttl=ttl, **kwargs)
 
     @classmethod
     def all(cls):
@@ -355,8 +355,7 @@ class BaseModel(object):
     def get(cls, *args, **kwargs):
         return cls.objects.get(*args, **kwargs)
 
-    def save(self):
-
+    def save(self, **kwargs):
         # handle polymorphic models
         if self._is_polymorphic:
             if self._is_polymorphic_base:
@@ -366,7 +365,7 @@ class BaseModel(object):
 
         is_new = self.pk is None
         self.validate()
-        self.__dmlquery__(self.__class__, self, batch=self._batch).save()
+        self.__dmlquery__(self.__class__, self, batch=self._batch).save(**kwargs)
 
         #reset the value managers
         for v in self._values.values():
@@ -386,6 +385,12 @@ class BaseModel(object):
     def _inst_batch(self, batch):
         self._batch = batch
         return self
+
+    def get_ttl(self, column_name=None):
+        """
+        Return ttl of row
+        """
+        return self.__dmlquery__(self.__class__, self, batch=self._batch).get_ttl(column_name)
 
     batch = hybrid_classmethod(_class_batch, _inst_batch)
 

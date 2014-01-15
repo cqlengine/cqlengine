@@ -1,5 +1,5 @@
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from cqlengine import BaseContainerColumn, Map, columns
 from cqlengine.columns import Counter, List, Set
 
@@ -82,7 +82,7 @@ class BatchQuery(object):
     def __init__(self, batch_type=None, timestamp=None, consistency=None, execute_on_exception=False):
         self.queries = []
         self.batch_type = batch_type
-        if timestamp is not None and not isinstance(timestamp, datetime):
+        if timestamp is not None and not isinstance(timestamp, (datetime, timedelta)):
             raise CQLEngineException('timestamp object must be an instance of datetime')
         self.timestamp = timestamp
         self._consistency = consistency
@@ -103,8 +103,16 @@ class BatchQuery(object):
 
         opener = 'BEGIN ' + (self.batch_type + ' ' if self.batch_type else '') + ' BATCH'
         if self.timestamp:
-            epoch = datetime(1970, 1, 1)
-            ts = long((self.timestamp - epoch).total_seconds() * 1000)
+
+            if isinstance(self.timestamp, (int, long)):
+                ts = self.timestamp
+            elif isinstance(self.timestamp, timedelta):
+                ts = long((datetime.now() + self.timestamp - datetime.fromtimestamp(0)).total_seconds() * 1000000)
+            elif isinstance(self.timestamp, datetime):
+                ts = long((self.timestamp - datetime.fromtimestamp(0)).total_seconds() * 1000000)
+            else:
+                raise ValueError("Batch expects a long, a timedelta, or a datetime")
+
             opener += ' USING TIMESTAMP {}'.format(ts)
 
         query_list = [opener]
@@ -166,6 +174,7 @@ class AbstractQuerySet(object):
         self._batch = None
         self._ttl = None
         self._consistency = None
+        self._timestamp = None
 
     @property
     def column_family_name(self):
@@ -510,7 +519,9 @@ class AbstractQuerySet(object):
         return self._only_or_defer('defer', fields)
 
     def create(self, **kwargs):
-        return self.model(**kwargs).batch(self._batch).ttl(self._ttl).consistency(self._consistency).save()
+        return self.model(**kwargs).batch(self._batch).ttl(self._ttl).\
+            consistency(self._consistency).\
+            timestamp(self._timestamp).save()
 
     def delete(self):
         """
@@ -523,7 +534,8 @@ class AbstractQuerySet(object):
 
         dq = DeleteStatement(
             self.column_family_name,
-            where=self._where
+            where=self._where,
+            timestamp=self._timestamp
         )
         self._execute(dq)
 
@@ -638,13 +650,18 @@ class ModelQuerySet(AbstractQuerySet):
         clone._ttl = ttl
         return clone
 
+    def timestamp(self, timestamp):
+        clone = copy.deepcopy(self)
+        clone._timestamp = timestamp
+        return clone
+
     def update(self, **values):
         """ Updates the rows in this queryset """
         if not values:
             return
 
         nulled_columns = set()
-        us = UpdateStatement(self.column_family_name, where=self._where, ttl=self._ttl)
+        us = UpdateStatement(self.column_family_name, where=self._where, ttl=self._ttl, timestamp=self._timestamp)
         for name, val in values.items():
             col = self.model._columns.get(name)
             # check for nonexistant columns
@@ -683,14 +700,16 @@ class DMLQuery(object):
     """
     _ttl = None
     _consistency = None
+    _timestamp = None
 
-    def __init__(self, model, instance=None, batch=None, ttl=None, consistency=None):
+    def __init__(self, model, instance=None, batch=None, ttl=None, consistency=None, timestamp=None):
         self.model = model
         self.column_family_name = self.model.column_family_name()
         self.instance = instance
         self._batch = batch
         self._ttl = ttl
         self._consistency = consistency
+        self._timestamp = timestamp
 
     def _execute(self, q):
         if self._batch:
@@ -741,7 +760,7 @@ class DMLQuery(object):
             raise CQLEngineException("DML Query intance attribute is None")
         assert type(self.instance) == self.model
 
-        statement = UpdateStatement(self.column_family_name, ttl=self._ttl)
+        statement = UpdateStatement(self.column_family_name, ttl=self._ttl, timestamp=self._timestamp)
         #get defined fields and their column names
         for name, col in self.model._columns.items():
             if not col.is_primary_key:
@@ -800,7 +819,7 @@ class DMLQuery(object):
         if self.instance._has_counter or self.instance._can_update():
             return self.update()
         else:
-            insert = InsertStatement(self.column_family_name, ttl=self._ttl)
+            insert = InsertStatement(self.column_family_name, ttl=self._ttl, timestamp=self._timestamp)
             for name, col in self.instance._columns.items():
                 val = getattr(self.instance, name, None)
                 if col._val_is_null(val):
@@ -825,7 +844,7 @@ class DMLQuery(object):
         if self.instance is None:
             raise CQLEngineException("DML Query instance attribute is None")
 
-        ds = DeleteStatement(self.column_family_name)
+        ds = DeleteStatement(self.column_family_name, timestamp=self._timestamp)
         for name, col in self.model._primary_keys.items():
             ds.add_where_clause(WhereClause(
                 col.db_field_name,

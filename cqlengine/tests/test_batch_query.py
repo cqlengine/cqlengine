@@ -1,8 +1,13 @@
 from unittest import skip
 from uuid import uuid4
 import random
+from cqlengine.connection import ConnectionPool
+
+import mock
+import sure
+
 from cqlengine import Model, columns
-from cqlengine.management import delete_table, create_table
+from cqlengine.management import drop_table, sync_table
 from cqlengine.query import BatchQuery
 from cqlengine.tests.base import BaseCassEngTestCase
 
@@ -17,13 +22,13 @@ class BatchQueryTests(BaseCassEngTestCase):
     @classmethod
     def setUpClass(cls):
         super(BatchQueryTests, cls).setUpClass()
-        delete_table(TestMultiKeyModel)
-        create_table(TestMultiKeyModel)
+        drop_table(TestMultiKeyModel)
+        sync_table(TestMultiKeyModel)
 
     @classmethod
     def tearDownClass(cls):
         super(BatchQueryTests, cls).tearDownClass()
-        delete_table(TestMultiKeyModel)
+        drop_table(TestMultiKeyModel)
 
     def setUp(self):
         super(BatchQueryTests, self).setUp()
@@ -36,12 +41,23 @@ class BatchQueryTests(BaseCassEngTestCase):
         b = BatchQuery()
         inst = TestMultiKeyModel.batch(b).create(partition=self.pkey, cluster=2, count=3, text='4')
 
+
         with self.assertRaises(TestMultiKeyModel.DoesNotExist):
             TestMultiKeyModel.get(partition=self.pkey, cluster=2)
 
         b.execute()
 
+
         TestMultiKeyModel.get(partition=self.pkey, cluster=2)
+
+    def test_batch_is_executed(self):
+        b = BatchQuery()
+        inst = TestMultiKeyModel.batch(b).create(partition=self.pkey, cluster=2, count=3, text='4')
+
+        with self.assertRaises(TestMultiKeyModel.DoesNotExist):
+            TestMultiKeyModel.get(partition=self.pkey, cluster=2)
+
+        b.execute()
 
     def test_update_success_case(self):
 

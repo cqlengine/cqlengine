@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from cqlengine.functions import QueryValue
 from cqlengine.operators import BaseWhereOperator, InOperator
 
@@ -400,12 +401,13 @@ class MapDeleteClause(BaseDeleteClause):
 class BaseCQLStatement(object):
     """ The base cql statement class """
 
-    def __init__(self, table, consistency=None, where=None):
+    def __init__(self, table, consistency=None, timestamp=None, where=None):
         super(BaseCQLStatement, self).__init__()
         self.table = table
         self.consistency = consistency
         self.context_id = 0
         self.context_counter = self.context_id
+        self.timestamp = timestamp
 
         self.where_clauses = []
         for clause in where or []:
@@ -442,6 +444,26 @@ class BaseCQLStatement(object):
         for clause in self.where_clauses:
             clause.set_context_id(self.context_counter)
             self.context_counter += clause.get_context_size()
+
+    @property
+    def timestamp_normalized(self):
+        """
+        we're expecting self.timestamp to be either a long, int, a datetime, or a timedelta
+        :return:
+        """
+        if not self.timestamp:
+            return None
+
+        if isinstance(self.timestamp, (int, long)):
+            return self.timestamp
+
+        if isinstance(self.timestamp, timedelta):
+            tmp = datetime.now() + self.timestamp
+        else:
+            tmp = self.timestamp
+
+        return long(((tmp - datetime.fromtimestamp(0)).total_seconds()) * 1000000)
+
 
     def __unicode__(self):
         raise NotImplementedError
@@ -513,13 +535,15 @@ class AssignmentStatement(BaseCQLStatement):
                  assignments=None,
                  consistency=None,
                  where=None,
-                 ttl=None):
+                 ttl=None,
+                 timestamp=None):
         super(AssignmentStatement, self).__init__(
             table,
             consistency=consistency,
             where=where,
         )
         self.ttl = ttl
+        self.timestamp = timestamp
 
         # add assignments
         self.assignments = []
@@ -575,6 +599,9 @@ class InsertStatement(AssignmentStatement):
         if self.ttl:
             qs += ["USING TTL {}".format(self.ttl)]
 
+        if self.timestamp:
+            qs += ["USING TIMESTAMP {}".format(self.timestamp_normalized)]
+
         return ' '.join(qs)
 
 
@@ -584,8 +611,16 @@ class UpdateStatement(AssignmentStatement):
     def __unicode__(self):
         qs = ['UPDATE', self.table]
 
+        using_options = []
+
         if self.ttl:
-            qs += ["USING TTL {}".format(self.ttl)]
+            using_options += ["TTL {}".format(self.ttl)]
+
+        if self.timestamp:
+            using_options += ["TIMESTAMP {}".format(self.timestamp_normalized)]
+
+        if using_options:
+            qs += ["USING {}".format(" AND ".join(using_options))]
 
         qs += ['SET']
         qs += [', '.join([unicode(c) for c in self.assignments])]
@@ -599,11 +634,12 @@ class UpdateStatement(AssignmentStatement):
 class DeleteStatement(BaseCQLStatement):
     """ a cql delete statement """
 
-    def __init__(self, table, fields=None, consistency=None, where=None):
+    def __init__(self, table, fields=None, consistency=None, where=None, timestamp=None):
         super(DeleteStatement, self).__init__(
             table,
             consistency=consistency,
             where=where,
+            timestamp=timestamp
         )
         self.fields = []
         if isinstance(fields, basestring):
@@ -637,6 +673,14 @@ class DeleteStatement(BaseCQLStatement):
         if self.fields:
             qs += [', '.join(['{}'.format(f) for f in self.fields])]
         qs += ['FROM', self.table]
+
+        delete_option = []
+
+        if self.timestamp:
+            delete_option += ["TIMESTAMP {}".format(self.timestamp_normalized)]
+
+        if delete_option:
+            qs += [" USING {} ".format(" AND ".join(delete_option))]
 
         if self.where_clauses:
             qs += [self._where]

@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import re
-
 from cqlengine import columns
 from cqlengine.exceptions import ModelException, CQLEngineException, ValidationError
 from cqlengine.query import ModelQuerySet, DMLQuery, AbstractQueryableColumn
@@ -76,6 +75,7 @@ class TTLDescriptor(object):
     """
     def __get__(self, instance, model):
         if instance:
+            #instance = copy.deepcopy(instance)
             # instance method
             def ttl_setter(ts):
                 instance._ttl = ts
@@ -93,6 +93,23 @@ class TTLDescriptor(object):
     def __call__(self, *args, **kwargs):
         raise NotImplementedError
 
+class TimestampDescriptor(object):
+    """
+    returns a query set descriptor with a timestamp specified
+    """
+    def __get__(self, instance, model):
+        if instance:
+            # instance method
+            def timestamp_setter(ts):
+                instance._timestamp = ts
+                return instance
+            return timestamp_setter
+
+        return model.objects.timestamp
+
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError
 
 class ConsistencyDescriptor(object):
     """
@@ -100,6 +117,7 @@ class ConsistencyDescriptor(object):
     """
     def __get__(self, instance, model):
         if instance:
+            #instance = copy.deepcopy(instance)
             def consistency_setter(consistency):
                 instance.__consistency__ = consistency
                 return instance
@@ -201,14 +219,17 @@ class BaseModel(object):
     ttl = TTLDescriptor()
     consistency = ConsistencyDescriptor()
 
-    #table names will be generated automatically from it's model and package name
-    #however, you can also define them manually here
+    # custom timestamps, see USING TIMESTAMP X
+    timestamp = TimestampDescriptor()
+
+    # table names will be generated automatically from it's model
+    # however, you can also define them manually here
     __table_name__ = None
 
-    #the keyspace for this model
+    # the keyspace for this model
     __keyspace__ = None
 
-    #polymorphism options
+    # polymorphism options
     __polymorphic_key__ = None
 
     # compaction options
@@ -231,14 +252,18 @@ class BaseModel(object):
     __queryset__ = ModelQuerySet
     __dmlquery__ = DMLQuery
 
-    __ttl__ = None
+    #__ttl__ = None # this doesn't seem to be used
     __consistency__ = None # can be set per query
 
     __read_repair_chance__ = 0.1
 
+
+    _timestamp = None # optional timestamp to include with the operation (USING TIMESTAMP)
+
     def __init__(self, **values):
         self._values = {}
         self._ttl = None
+        self._timestamp = None
 
         for name, column in self._columns.items():
             value =  values.get(name, None)
@@ -257,11 +282,11 @@ class BaseModel(object):
         """
         Pretty printing of models by their primary key
         """
-        return '{} <{}>'.format(self.__class__.__name__, 
+        return '{} <{}>'.format(self.__class__.__name__,
                                 ', '.join(('{}={}'.format(k, getattr(self, k)) for k,v in self._primary_keys.iteritems()))
                                 )
 
-    
+
 
     @classmethod
     def _discover_polymorphic_submodels(cls):
@@ -435,12 +460,16 @@ class BaseModel(object):
         self.__dmlquery__(self.__class__, self,
                           batch=self._batch,
                           ttl=self._ttl,
+                          timestamp=self._timestamp,
                           consistency=self.__consistency__).save()
 
         #reset the value managers
         for v in self._values.values():
             v.reset_previous_value()
         self._is_persisted = True
+
+        self._ttl = None
+        self._timestamp = None
 
         return self
 
@@ -469,6 +498,7 @@ class BaseModel(object):
         self.__dmlquery__(self.__class__, self,
                           batch=self._batch,
                           ttl=self._ttl,
+                          timestamp=self._timestamp,
                           consistency=self.__consistency__).update()
 
         #reset the value managers
@@ -476,11 +506,14 @@ class BaseModel(object):
             v.reset_previous_value()
         self._is_persisted = True
 
+        self._ttl = None
+        self._timestamp = None
+
         return self
 
     def delete(self):
         """ Deletes this instance """
-        self.__dmlquery__(self.__class__, self, batch=self._batch).delete()
+        self.__dmlquery__(self.__class__, self, batch=self._batch, timestamp=self._timestamp).delete()
 
     def get_changed_columns(self):
         """ returns a list of the columns that have been updated since instantiation or save """
@@ -494,7 +527,9 @@ class BaseModel(object):
         self._batch = batch
         return self
 
+
     batch = hybrid_classmethod(_class_batch, _inst_batch)
+
 
 
 class ModelMetaClass(type):

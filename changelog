@@ -1,5 +1,9 @@
 CHANGELOG
 
+0.13.0-dev
+
+* Add support for table properties. See #181.
+
 0.12.0
 
 * Normalize and unquote boolean values. (Thanks Kevin Deldycke github.com/kdeldycke)

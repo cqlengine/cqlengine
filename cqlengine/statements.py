@@ -492,11 +492,11 @@ class BaseCQLStatement(object):
             return self.timestamp
 
         if isinstance(self.timestamp, timedelta):
-            tmp = datetime.now() + self.timestamp
+            tmp = datetime.utcnow() + self.timestamp
         else:
             tmp = self.timestamp
 
-        return long(((tmp - datetime.fromtimestamp(0)).total_seconds()) * 1000000)
+        return long(((tmp - datetime.utcfromtimestamp(0)).total_seconds()) * 1000000)
 
     def __unicode__(self):
         raise NotImplementedError

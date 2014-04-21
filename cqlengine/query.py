@@ -151,9 +151,9 @@ class BatchQuery(object):
             if isinstance(self.timestamp, (int, long)):
                 ts = self.timestamp
             elif isinstance(self.timestamp, timedelta):
-                ts = long((datetime.now() + self.timestamp - datetime.fromtimestamp(0)).total_seconds() * 1000000)
+                ts = long((datetime.utcnow() + self.timestamp - datetime.utcfromtimestamp(0)).total_seconds() * 1000000)
             elif isinstance(self.timestamp, datetime):
-                ts = long((self.timestamp - datetime.fromtimestamp(0)).total_seconds() * 1000000)
+                ts = long((self.timestamp - datetime.utcfromtimestamp(0)).total_seconds() * 1000000)
             else:
                 raise ValueError("Batch expects a long, a timedelta, or a datetime")
 

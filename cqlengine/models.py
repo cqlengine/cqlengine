@@ -222,6 +222,8 @@ class BaseModel(object):
     # custom timestamps, see USING TIMESTAMP X
     timestamp = TimestampDescriptor()
 
+    # _len is lazily created by __len__
+
     # table names will be generated automatically from it's model
     # however, you can also define them manually here
     __table_name__ = None
@@ -446,7 +448,11 @@ class BaseModel(object):
 
     def __len__(self):
         """ Returns the number of columns defined on that model. """
-        return len(self._columns.keys())
+        try:
+            return self._len
+        except:
+            self._len = len(self._columns.keys())
+            return self._len
 
     def keys(self):
         """ Returns list of column's IDs. """

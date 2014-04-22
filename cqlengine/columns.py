@@ -389,7 +389,7 @@ class UUID(Column):
         from uuid import UUID as _UUID
         if isinstance(val, _UUID): return val
         if isinstance(val, basestring) and self.re_uuid.match(val):
-                return _UUID(val)
+            return _UUID(val)
         raise ValidationError("{} is not a valid uuid".format(value))
 
     def to_python(self, value):

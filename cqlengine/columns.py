@@ -1,5 +1,5 @@
 #column field types
-from copy import deepcopy
+from copy import deepcopy, copy
 from datetime import datetime
 from datetime import date
 import re
@@ -33,7 +33,7 @@ class BaseValueManager(object):
         return self.value != self.previous_value
 
     def reset_previous_value(self):
-        self.previous_value = deepcopy(self.value)
+        self.previous_value = copy(self.value)
 
     def getval(self):
         return self.value

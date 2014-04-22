@@ -179,10 +179,9 @@ class ColumnDescriptor(object):
         :param instance: the model instance
         :type instance: Model
         """
-
-        if instance:
+        try:
             return instance._values[self.column.column_name].getval()
-        else:
+        except AttributeError as e:
             return self.query_evaluator
 
     def __set__(self, instance, value):

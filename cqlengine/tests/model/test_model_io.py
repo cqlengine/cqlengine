@@ -9,11 +9,6 @@ from cqlengine.management import delete_table
 from cqlengine.models import Model
 from cqlengine import columns
 
-class TestModel(Model):
-    id      = columns.UUID(primary_key=True, default=lambda:uuid4())
-    count   = columns.Integer()
-    text    = columns.Text(required=False)
-    a_bool  = columns.Boolean(default=False)
 
 class TestModel(Model):
     id      = columns.UUID(primary_key=True, default=lambda:uuid4())

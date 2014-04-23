@@ -266,7 +266,8 @@ class BaseModel(object):
         self._timestamp = None
 
         for name, column in self._columns.items():
-            value =  values.get(name, None)
+            column_default = column.get_default() if column.has_default else None
+            value = values.get(name, column_default)
             if value is not None or isinstance(column, columns.BaseContainerColumn):
                 value = column.to_python(value)
             value_mngr = column.value_manager(self, column, value)
@@ -285,8 +286,6 @@ class BaseModel(object):
         return '{} <{}>'.format(self.__class__.__name__,
                                 ', '.join(('{}={}'.format(k, getattr(self, k)) for k,v in self._primary_keys.iteritems()))
                                 )
-
-
 
     @classmethod
     def _discover_polymorphic_submodels(cls):

@@ -22,17 +22,38 @@ class TestModelClassFunction(BaseCassEngTestCase):
             id  = columns.UUID(primary_key=True, default=lambda:uuid4())
             text = columns.Text()
 
-        #check class attibutes
+        # Check class attibutes
         self.assertHasAttr(TestModel, '_columns')
         self.assertHasAttr(TestModel, 'id')
         self.assertHasAttr(TestModel, 'text')
 
-        #check instance attributes
+        # Check instance attributes
         inst = TestModel()
         self.assertHasAttr(inst, 'id')
         self.assertHasAttr(inst, 'text')
-        self.assertIsNone(inst.id)
         self.assertIsNone(inst.text)
+        self.assertIsNotNone(inst.id)
+
+    def test_values_on_instantiation(self):
+        """
+        Tests defaults and user-provided values on instantiation.
+        """
+
+        class TestPerson(Model):
+            first_name = columns.Text(primary_key=True, default='kevin')
+            last_name = columns.Text(default='something')
+
+        # Check that defaults are available at instantiation.
+        inst1 = TestPerson()
+        self.assertHasAttr(inst1, 'first_name')
+        self.assertHasAttr(inst1, 'last_name')
+        self.assertEquals(inst1.first_name, 'kevin')
+        self.assertEquals(inst1.last_name, 'something')
+
+        # Check that values on instantiation overrides defaults.
+        inst2 = TestPerson(first_name='bob', last_name='joe')
+        self.assertEquals(inst2.first_name, 'bob')
+        self.assertEquals(inst2.last_name, 'joe')
 
     def test_db_map(self):
         """

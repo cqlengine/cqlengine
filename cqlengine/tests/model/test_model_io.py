@@ -9,11 +9,6 @@ from cqlengine.management import delete_table
 from cqlengine.models import Model
 from cqlengine import columns
 
-class TestModel(Model):
-    id      = columns.UUID(primary_key=True, default=lambda:uuid4())
-    count   = columns.Integer()
-    text    = columns.Text(required=False)
-    a_bool  = columns.Boolean(default=False)
 
 class TestModel(Model):
     id      = columns.UUID(primary_key=True, default=lambda:uuid4())
@@ -36,9 +31,24 @@ class TestModelIO(BaseCassEngTestCase):
 
     def test_model_save_and_load(self):
         """
-        Tests that models can be saved and retrieved
+        Tests that models can be saved and retrieved, using the create() method.
         """
         tm = TestModel.create(count=8, text='123456789')
+        tm2 = TestModel.objects(id=tm.pk).first()
+
+        for cname in tm._columns.keys():
+            self.assertEquals(getattr(tm, cname), getattr(tm2, cname))
+
+    def test_model_instantiation_save_and_load(self):
+        """
+        Tests that models can be saved and retrieved, this time using the natural model instantiation.
+        """
+        tm = TestModel(count=8, text='123456789')
+        # Tests that values are available on instantiation.
+        self.assertIsNotNone(tm['id'])
+        self.assertEquals(tm.count, 8)
+        self.assertEquals(tm.text, '123456789')
+        tm.save()
         tm2 = TestModel.objects(id=tm.pk).first()
 
         for cname in tm._columns.keys():

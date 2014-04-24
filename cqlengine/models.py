@@ -278,6 +278,14 @@ class BaseModel(object):
         self._is_persisted = False
         self._batch = None
 
+    def _reset_state(self):
+        """
+        Mark the instance as in sync with its in-database copy.
+        """
+        # Reset the value managers.
+        for v in self._values.values():
+            v.reset_previous_value()
+        self._is_persisted = True
 
     def __repr__(self):
         """
@@ -339,7 +347,7 @@ class BaseModel(object):
             klass = cls
 
         instance = klass(**field_dict)
-        instance._is_persisted = True
+        instance._reset_state()
         return instance
 
     def _can_update(self):
@@ -501,10 +509,7 @@ class BaseModel(object):
                           timestamp=self._timestamp,
                           consistency=self.__consistency__).save()
 
-        #reset the value managers
-        for v in self._values.values():
-            v.reset_previous_value()
-        self._is_persisted = True
+        self._reset_state()
 
         self._ttl = None
         self._timestamp = None
@@ -539,10 +544,7 @@ class BaseModel(object):
                           timestamp=self._timestamp,
                           consistency=self.__consistency__).update()
 
-        #reset the value managers
-        for v in self._values.values():
-            v.reset_previous_value()
-        self._is_persisted = True
+        self._reset_state()
 
         self._ttl = None
         self._timestamp = None

@@ -1,10 +1,13 @@
 from collections import OrderedDict
+from copy import deepcopy
 import re
+
 from cqlengine import columns
 from cqlengine.exceptions import ModelException, CQLEngineException, ValidationError
 from cqlengine.query import ModelQuerySet, DMLQuery, AbstractQueryableColumn
 from cqlengine.query import DoesNotExist as _DoesNotExist
 from cqlengine.query import MultipleObjectsReturned as _MultipleObjectsReturned
+
 
 class ModelDefinitionException(ModelException): pass
 
@@ -265,13 +268,37 @@ class BaseModel(object):
         self._ttl = None
         self._timestamp = None
 
-        for name, column in self._columns.items():
+        for column_id, column in self._columns.items():
+
+            def _normalize_value(value):
+                """
+                Normalize value for value manager's consumption.
+                """
+                if value is not None or isinstance(column, columns.BaseContainerColumn):
+                    value = column.to_python(value)
+                return value
+
+            # Compute the value of the column.
             column_default = column.get_default() if column.has_default else None
-            value = values.get(name, column_default)
-            if value is not None or isinstance(column, columns.BaseContainerColumn):
-                value = column.to_python(value)
-            value_mngr = column.value_manager(self, column, value)
-            self._values[name] = value_mngr
+            value = values.get(column_id, column_default)
+
+            # Initialize each column with its own value manager.
+            value_mngr = column.value_manager(self, column, _normalize_value(value))
+
+            # The first part of the test below detects that the column value
+            # provided by the user at instantiation is different to column's
+            # default. In which case we mark the column as intentionnaly
+            # changed.
+            # The second part ensures the column is not marked as changed if
+            # the default column value is not supposed to be set by default
+            # (i.e. does not exist as a cell in Cassandra or, using
+            # BaseValueManager vocabulary, is supposed to be 'deleted').
+            if value != column_default or column_default is not None:
+                previous_value = column_default if value != column_default else None
+                value_mngr.previous_value = deepcopy(_normalize_value(previous_value))
+                value_mngr.changed = True
+
+            self._values[column_id] = value_mngr
 
         # a flag set by the deserializer to indicate
         # that update should be used when persisting changes

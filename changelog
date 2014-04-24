@@ -3,6 +3,7 @@ CHANGELOG
 0.13.0-dev
 
 * Make default column values available on instantiation.
+* Detect changed columns on instantiation.
 
 0.12.0
 

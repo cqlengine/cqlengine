@@ -200,6 +200,14 @@ class TestUpdating(BaseCassEngTestCase):
         self.instance.save()
         assert self.instance.get_changed_columns() == []
 
+    def test_get_changed_columns_on_instantiation(self):
+        instance = TestMultiKeyModel(
+            partition=random.randint(0, 1000),
+            cluster=random.randint(0, 1000),
+        )
+        self.assertEquals(sorted(instance.get_changed_columns()),
+                          sorted(['partition', 'cluster']))
+
 
 class TestCanUpdate(BaseCassEngTestCase):
 

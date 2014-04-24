@@ -37,6 +37,9 @@ class TestModelClassFunction(BaseCassEngTestCase):
     def test_values_on_instantiation(self):
         """
         Tests defaults and user-provided values on instantiation.
+
+        Also checks that columns are marked as changed.
+        See #174.
         """
 
         class TestPerson(Model):
@@ -49,11 +52,15 @@ class TestModelClassFunction(BaseCassEngTestCase):
         self.assertHasAttr(inst1, 'last_name')
         self.assertEquals(inst1.first_name, 'kevin')
         self.assertEquals(inst1.last_name, 'something')
+        self.assertEquals(sorted(inst1.get_changed_columns()),
+                          sorted(['first_name', 'last_name']))
 
         # Check that values on instantiation overrides defaults.
         inst2 = TestPerson(first_name='bob', last_name='joe')
         self.assertEquals(inst2.first_name, 'bob')
         self.assertEquals(inst2.last_name, 'joe')
+        self.assertEquals(sorted(inst1.get_changed_columns()),
+                          sorted(['first_name', 'last_name']))
 
     def test_db_map(self):
         """

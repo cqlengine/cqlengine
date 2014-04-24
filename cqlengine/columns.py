@@ -17,32 +17,33 @@ class BaseValueManager(object):
         self.column = column
         self.previous_value = deepcopy(value)
         self.value = value
+        self.changed = False
 
     @property
     def deleted(self):
-        return self.value is None and self.previous_value is not None
+        return self.value is None and self.changed
 
-    @property
-    def changed(self):
+    def track_changed(self):
         """
-        Indicates whether or not this value has changed.
-
-        :rtype: boolean
-
+        Maintain the state of the ``changed`` boolean.
         """
-        return self.value != self.previous_value
+        if self.value != self.previous_value:
+            self.changed = True
 
     def reset_previous_value(self):
         self.previous_value = deepcopy(self.value)
+        self.changed = False
 
     def getval(self):
         return self.value
 
     def setval(self, val):
         self.value = val
+        self.track_changed()
 
     def delval(self):
         self.value = None
+        self.track_changed()
 
     def get_property(self):
         _get = lambda slf: self.getval()

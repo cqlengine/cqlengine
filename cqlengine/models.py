@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import re
 from cqlengine import columns
+from cqlengine.events import ModelEvent
 from cqlengine.exceptions import ModelException, CQLEngineException, ValidationError
 from cqlengine.query import ModelQuerySet, DMLQuery, AbstractQueryableColumn
 from cqlengine.query import DoesNotExist as _DoesNotExist
@@ -214,6 +215,13 @@ class BaseModel(object):
     class DoesNotExist(_DoesNotExist): pass
 
     class MultipleObjectsReturned(_MultipleObjectsReturned): pass
+
+    class BeforeSave(ModelEvent): pass
+    class AfterSaved(ModelEvent): pass
+    class BeforeUpdate(ModelEvent): pass
+    class AfterUpdated(ModelEvent): pass
+    class BeforeDelete(ModelEvent): pass
+    class AfterDeleted(ModelEvent): pass
 
     objects = QuerySetDescriptor()
     ttl = TTLDescriptor()
@@ -718,6 +726,17 @@ class ModelMetaClass(type):
             if DoesNotExistBase is not None: break
         DoesNotExistBase = DoesNotExistBase or attrs.pop('DoesNotExist', BaseModel.DoesNotExist)
         attrs['DoesNotExist'] = type('DoesNotExist', (DoesNotExistBase,), {})
+
+        # setup event classes
+        for event_name in ['BeforeSave', 'AfterSaved', 'BeforeUpdate', 'AfterUpdated',
+                           'BeforeDelete', 'AfterDeleted']:
+            for base in bases:
+                try:
+                    base_event_class = getattr(base, event_name)
+                    break
+                except AttributeError:
+                    pass
+            attrs[event_name] = type(event_name, (base_event_class, ), {})
 
         MultipleObjectsReturnedBase = None
         for base in bases:

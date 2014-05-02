@@ -820,6 +820,7 @@ class DMLQuery(object):
             raise CQLEngineException("DML Query intance attribute is None")
         assert type(self.instance) == self.model
 
+        self.model.BeforeUpdate.notify(self)
         statement = UpdateStatement(self.column_family_name, ttl=self._ttl, timestamp=self._timestamp)
         #get defined fields and their column names
         for name, col in self.model._columns.items():
@@ -864,6 +865,7 @@ class DMLQuery(object):
             self._execute(statement)
 
         self._delete_null_columns()
+        self.model.AfterUpdated.notify(self)
 
     def save(self):
         """
@@ -876,6 +878,7 @@ class DMLQuery(object):
             raise CQLEngineException("DML Query intance attribute is None")
         assert type(self.instance) == self.model
 
+        self.model.BeforeSave.notify(self)
         nulled_fields = set()
         if self.instance._has_counter or self.instance._can_update():
             return self.update()
@@ -899,12 +902,14 @@ class DMLQuery(object):
 
         # delete any nulled columns
         self._delete_null_columns()
+        self.model.AfterSaved.notify(self)
 
     def delete(self):
         """ Deletes one instance """
         if self.instance is None:
             raise CQLEngineException("DML Query instance attribute is None")
 
+        self.model.BeforeDelete.notify(self)
         ds = DeleteStatement(self.column_family_name, timestamp=self._timestamp)
         for name, col in self.model._primary_keys.items():
             ds.add_where_clause(WhereClause(
@@ -913,5 +918,6 @@ class DMLQuery(object):
                 col.to_database(getattr(self.instance, name))
             ))
         self._execute(ds)
+        self.model.AfterDeleted.notify(self)
 
 

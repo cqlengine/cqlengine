@@ -14,6 +14,11 @@ __version__ = open(__cqlengine_version_path__, 'r').readline().strip()
 SizeTieredCompactionStrategy = "SizeTieredCompactionStrategy"
 LeveledCompactionStrategy = "LeveledCompactionStrategy"
 
+# Caching constants.
+ALL = "ALL"
+KEYS_ONLY = "KEYS_ONLY"
+ROWS_ONLY = "ROWS_ONLY"
+NONE = "NONE"
 
 ANY = "ANY"
 ONE = "ONE"
@@ -23,4 +28,3 @@ QUORUM = "QUORUM"
 LOCAL_QUORUM = "LOCAL_QUORUM"
 EACH_QUORUM = "EACH_QUORUM"
 ALL = "ALL"
-

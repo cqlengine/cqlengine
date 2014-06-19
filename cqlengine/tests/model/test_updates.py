@@ -89,3 +89,7 @@ class ModelUpdateTests(BaseCassEngTestCase):
         with self.assertRaises(ValidationError):
             m0.update(partition=uuid4())
 
+    def test_noop_primary_key_update(self):
+        """ tests that assigning the same value on a primary key will do nothing. """
+        m0 = TestUpdateModel.create(count=5, text='monkey')
+        m0.update(partition=m0.partition)

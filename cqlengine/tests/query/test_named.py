@@ -1,5 +1,6 @@
-from cqlengine import operators
-from cqlengine.named import NamedKeyspace
+from cqlengine import operators, Model, Text, Bytes, Token, Integer
+from cqlengine.management import sync_table
+from cqlengine.named import NamedKeyspace, NamedTable
 from cqlengine.operators import EqualsOperator, GreaterThanOrEqualOperator
 from cqlengine.query import ResultObject
 from cqlengine.tests.query.test_queryset import BaseQuerySetUsage
@@ -243,4 +244,25 @@ class TestQuerySetCountSelectionAndIteration(BaseQuerySetUsage):
         with self.assertRaises(self.table.MultipleObjectsReturned):
             self.table.objects.get(test_id=1)
 
+
+
+def test_token():
+    class Items(Model):
+        __table_name__ = "test_token_with_named_tables"
+        id      = Integer(primary_key=True)
+        data    = Text()
+
+    sync_table(Items)
+
+    Items.create(id=1, data="jon")
+    Items.create(id=2, data="jon2")
+
+    named = NamedTable("cqlengine_test", "test_token_with_named_tables")
+
+    query = named.objects.all().limit(1)
+
+    first_page = list(query);
+    last = first_page[-1]
+    
+    next_page = list(query.filter(pk__token__gt=Token(last.id)))
 

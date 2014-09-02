@@ -4,3 +4,4 @@ Sphinx
 mock
 sure==1.2.5
 cassandra-driver>=2.1.0
+six

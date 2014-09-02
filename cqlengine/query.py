@@ -1,10 +1,13 @@
+from __future__ import absolute_import
+from contextlib import contextmanager
 import copy
+import threading
 import time
 from datetime import datetime, timedelta
 from cqlengine import BaseContainerColumn, Map, columns
 from cqlengine.columns import Counter, List, Set
 
-from cqlengine.connection import execute
+from .connection import execute, NOT_SET
 
 from cqlengine.exceptions import CQLEngineException, ValidationError
 from cqlengine.functions import Token, BaseQueryFunction, QueryValue, UnicodeMixin
@@ -77,7 +80,8 @@ class BatchQuery(object):
     """
     _consistency = None
 
-    def __init__(self, batch_type=None, timestamp=None, consistency=None, execute_on_exception=False):
+    def __init__(self, batch_type=None, timestamp=None, consistency=None, execute_on_exception=False,
+                 timeout=NOT_SET):
         """
         :param batch_type: (optional) One of batch type values available through BatchType enum
         :type batch_type: str or None
@@ -91,10 +95,9 @@ class BatchQuery(object):
             encountering an error within the context. By default, any exception raised from within
             the context scope will cause the batched queries not to be executed.
         :type execute_on_exception: bool
-        :param callbacks: A list of functions to be executed after the batch executes. Note, that if the batch
-            does not execute, the callbacks are not executed. This, thus, effectively is a list of "on success"
-            callback handlers. If defined, must be a collection of callables.
-        :type callbacks: list or set or tuple
+        :param timeout: (optional) Timeout for the entire batch (in seconds), if not specified fallback
+            to default session timeout
+        :type timeout: float or None
         """
         self.queries = []
         self.batch_type = batch_type
@@ -103,6 +106,7 @@ class BatchQuery(object):
         self.timestamp = timestamp
         self._consistency = consistency
         self._execute_on_exception = execute_on_exception
+        self._timeout = timeout
         self._callbacks = []
 
     def add_query(self, query):
@@ -171,7 +175,7 @@ class BatchQuery(object):
 
         query_list.append('APPLY BATCH;')
 
-        execute('\n'.join(query_list), parameters, self._consistency)
+        execute('\n'.join(query_list), parameters, self._consistency, self._timeout)
 
         self.queries = []
         self._execute_callbacks()
@@ -220,6 +224,7 @@ class AbstractQuerySet(object):
         self._ttl = getattr(model, '__default_ttl__', None)
         self._consistency = None
         self._timestamp = None
+        self._timeout = NOT_SET
 
     @property
     def column_family_name(self):
@@ -229,7 +234,7 @@ class AbstractQuerySet(object):
         if self._batch:
             return self._batch.add_query(q)
         else:
-            result = execute(q, consistency_level=self._consistency)
+            result = execute(q, consistency_level=self._consistency, timeout=self._timeout)
             return result
 
     def __unicode__(self):
@@ -252,6 +257,8 @@ class AbstractQuerySet(object):
                 # fly off into other batch instances which are never
                 # executed, thx @dokai
                 clone.__dict__[k] = self._batch
+            elif k == '_timeout':
+                clone.__dict__[k] = self._timeout
             else:
                 clone.__dict__[k] = copy.deepcopy(v, memo)
 
@@ -596,6 +603,15 @@ class AbstractQuerySet(object):
     def __ne__(self, q):
         return not (self != q)
 
+    def timeout(self, timeout):
+        """
+        :param timeout: Timeout for the query (in seconds)
+        :type timeout: float or None
+        """
+        clone = copy.deepcopy(self)
+        clone._timeout = timeout
+        return clone
+
 
 class ResultObject(dict):
     """
@@ -756,7 +772,26 @@ class ModelQuerySet(AbstractQuerySet):
             self._execute(ds)
 
 
-class DMLQuery(object):
+@contextmanager
+def query_timeout(timeout):
+    """
+    While in context, all unbatched inserts, updates, or deletes will use this timeout
+
+    >>> with query_timeout(0.5):
+    ...     MyModel(id=1).save()
+
+    :param timeout: Timeout for the query (in seconds), does not affect batch queries
+    :type timeout: float or None
+    """
+
+    DMLQuery._timeout = timeout
+    try:
+        yield
+    finally:
+        DMLQuery._timeout = NOT_SET
+
+
+class DMLQuery(threading.local):
     """
     A query object used for queries performing inserts, updates, or deletes
 
@@ -767,6 +802,7 @@ class DMLQuery(object):
     _ttl = None
     _consistency = None
     _timestamp = None
+    _timeout = NOT_SET
 
     def __init__(self, model, instance=None, batch=None, ttl=None, consistency=None, timestamp=None):
         self.model = model
@@ -776,12 +812,13 @@ class DMLQuery(object):
         self._ttl = ttl
         self._consistency = consistency
         self._timestamp = timestamp
+        self._timeout = self.__class__._timeout
 
     def _execute(self, q):
         if self._batch:
             return self._batch.add_query(q)
         else:
-            tmp = execute(q, consistency_level=self._consistency)
+            tmp = execute(q, consistency_level=self._consistency, timeout=self._timeout)
             return tmp
 
     def batch(self, batch_obj):
@@ -920,5 +957,3 @@ class DMLQuery(object):
                 col.to_database(getattr(self.instance, name))
             ))
         self._execute(ds)
-
-

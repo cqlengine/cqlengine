@@ -188,6 +188,14 @@ Model Methods
 
         Sets the ttl values to run instance updates and inserts queries with.
 
+    .. method:: if_not_exists()
+
+        Check the existence of an object before insertion. The existence of an
+        object is determined by its primary key(s). And please note using this flag
+        would incur performance cost.
+
+        This method is supported on Cassandra 2.0 or later.
+
     .. method:: update(**values)
 
         Performs an update on the model instance. You can pass in values to set on the model

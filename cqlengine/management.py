@@ -18,7 +18,8 @@ from cqlengine.models import Model
 # system keyspaces
 schema_columnfamilies = NamedTable('system', 'schema_columnfamilies')
 
-def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3, durable_writes=True, **replication_values):
+
+def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3, durable_writes=True, session=None, **replication_values):
     """
     creates a keyspace
 
@@ -50,19 +51,26 @@ def create_keyspace(name, strategy_class='SimpleStrategy', replication_factor=3,
 
         if strategy_class != 'SimpleStrategy':
             query += " AND DURABLE_WRITES = {}".format('true' if durable_writes else 'false')
+        if session is not None:
+            session.execute(query)
+        else:
+            execute(query)
 
-        execute(query)
 
-
-def delete_keyspace(name):
+def delete_keyspace(name, session=None):
     cluster = get_cluster()
     if name in cluster.metadata.keyspaces:
-        execute("DROP KEYSPACE {}".format(name))
+        if session is not None:
+            session.execute("DROP KEYSPACE {}".format(name))
+        else:
+            execute("DROP KEYSPACE {}".format(name))
+
 
 def create_table(model, create_missing_keyspace=True):
     raise CQLEngineException("create_table is deprecated, please use sync_table")
 
-def sync_table(model, create_missing_keyspace=True):
+
+def sync_table(model, create_missing_keyspace=True, session=None):
     """
     Inspects the model and creates / updates the corresponding table and columns.
 
@@ -88,7 +96,7 @@ def sync_table(model, create_missing_keyspace=True):
     ks_name = model._get_keyspace()
     #create missing keyspace
     if create_missing_keyspace:
-        create_keyspace(ks_name)
+        create_keyspace(ks_name, session=session)
 
     cluster = get_cluster()
 
@@ -100,7 +108,10 @@ def sync_table(model, create_missing_keyspace=True):
         qs = get_create_table(model)
 
         try:
-            execute(qs)
+            if session is not None:
+                session.execute(qs)
+            else:
+                execute(qs)
         except CQLEngineException as ex:
             # 1.2 doesn't return cf names, so we have to examine the exception
             # and ignore if it says the column family already exists
@@ -117,9 +128,12 @@ def sync_table(model, create_missing_keyspace=True):
             # add missing column using the column def
             query = "ALTER TABLE {} add {}".format(cf_name, col.get_column_def())
             logger.debug(query)
-            execute(query)
+            if session is not None:
+                session.execute(query)
+            else:
+                execute(query)
 
-        update_compaction(model)
+        update_compaction(model, session)
 
 
     table = cluster.metadata.keyspaces[ks_name].tables[raw_cf_name]
@@ -134,7 +148,11 @@ def sync_table(model, create_missing_keyspace=True):
         qs += ['ON {}'.format(cf_name)]
         qs += ['("{}")'.format(column.db_field_name)]
         qs = ' '.join(qs)
-        execute(qs)
+        if session is not None:
+            session.execute(qs)
+        else:
+            execute(qs)
+
 
 def get_create_table(model):
     cf_name = model.column_family_name()
@@ -259,7 +277,8 @@ def get_table_settings(model):
     table = cluster.metadata.keyspaces[ks].tables[table]
     return table
 
-def update_compaction(model):
+
+def update_compaction(model, session=None):
     """Updates the compaction options for the given model if necessary.
 
     :param model: The model to update.
@@ -301,7 +320,10 @@ def update_compaction(model):
         cf_name = model.column_family_name()
         query = "ALTER TABLE {} with compaction = {}".format(cf_name, options)
         logger.debug(query)
-        execute(query)
+        if session is not None:
+            session.execute(query)
+        else:
+            execute(query)
         return True
 
     return False
@@ -311,7 +333,7 @@ def delete_table(model):
     raise CQLEngineException("delete_table has been deprecated in favor of drop_table()")
 
 
-def drop_table(model):
+def drop_table(model, session=None):
 
     # don't try to delete non existant tables
     meta = get_cluster().metadata
@@ -321,7 +343,10 @@ def drop_table(model):
 
     try:
         table = meta.keyspaces[ks_name].tables[raw_cf_name]
-        execute('drop table {};'.format(model.column_family_name(include_keyspace=True)))
+        if session is not None:
+            session.execute('drop table {};'.format(model.column_family_name(include_keyspace=True)))
+        else:
+            execute('drop table {};'.format(model.column_family_name(include_keyspace=True)))
     except KeyError:
         pass
 

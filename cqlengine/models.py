@@ -275,6 +275,7 @@ class BaseModel(object):
     __replicate_on_write__ = None
 
     _timestamp = None # optional timestamp to include with the operation (USING TIMESTAMP)
+    _session = None
 
     def __init__(self, **values):
         self._values = {}
@@ -528,7 +529,8 @@ class BaseModel(object):
                           batch=self._batch,
                           ttl=self._ttl,
                           timestamp=self._timestamp,
-                          consistency=self.__consistency__).save()
+                          consistency=self.__consistency__,
+                          session=self._session).save()
 
         #reset the value managers
         for v in self._values.values():

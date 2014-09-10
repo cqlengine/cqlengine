@@ -8,7 +8,6 @@ from cqlengine.operators import BaseWhereOperator, InOperator
 class StatementException(Exception): pass
 
 
-
 import sys
 
 class UnicodeMixin(object):

@@ -77,7 +77,7 @@ class BatchQuery(object):
     """
     _consistency = None
 
-    def __init__(self, batch_type=None, timestamp=None, consistency=None, execute_on_exception=False):
+    def __init__(self, batch_type=None, timestamp=None, consistency=None, execute_on_exception=False, session=None):
         """
         :param batch_type: (optional) One of batch type values available through BatchType enum
         :type batch_type: str or None
@@ -104,6 +104,7 @@ class BatchQuery(object):
         self._consistency = consistency
         self._execute_on_exception = execute_on_exception
         self._callbacks = []
+        self.session = session
 
     def add_query(self, query):
         if not isinstance(query, BaseCQLStatement):
@@ -170,8 +171,10 @@ class BatchQuery(object):
             parameters.update(ctx)
 
         query_list.append('APPLY BATCH;')
-
-        execute('\n'.join(query_list), parameters, self._consistency)
+        if self.session is not None:
+            self.session.execute('\n'.join(query_list), parameters, self._consistency)
+        else:
+            execute('\n'.join(query_list), parameters, self._consistency)
 
         self.queries = []
         self._execute_callbacks()
@@ -187,9 +190,10 @@ class BatchQuery(object):
 
 class AbstractQuerySet(object):
 
-    def __init__(self, model):
+    def __init__(self, model, session=None):
         super(AbstractQuerySet, self).__init__()
         self.model = model
+        self.session = session
 
         #Where clause filters
         self._where = []
@@ -229,7 +233,10 @@ class AbstractQuerySet(object):
         if self._batch:
             return self._batch.add_query(q)
         else:
-            result = execute(q, consistency_level=self._consistency)
+            if self.session is not None:
+                result = self.session.execute(q, consistency_level=self._consistency)
+            else:
+                result = execute(q, consistency_level=self._consistency)
             return result
 
     def __unicode__(self):
@@ -768,7 +775,7 @@ class DMLQuery(object):
     _consistency = None
     _timestamp = None
 
-    def __init__(self, model, instance=None, batch=None, ttl=None, consistency=None, timestamp=None):
+    def __init__(self, model, instance=None, batch=None, ttl=None, consistency=None, timestamp=None, session=None):
         self.model = model
         self.column_family_name = self.model.column_family_name()
         self.instance = instance
@@ -776,12 +783,16 @@ class DMLQuery(object):
         self._ttl = ttl
         self._consistency = consistency
         self._timestamp = timestamp
+        self.session = session
 
     def _execute(self, q):
         if self._batch:
             return self._batch.add_query(q)
         else:
-            tmp = execute(q, consistency_level=self._consistency)
+            if self.session is not None:
+                tmp = self.session.execute(q, consistency_level=self._consistency)
+            else:
+                tmp = execute(q, consistency_level=self._consistency)
             return tmp
 
     def batch(self, batch_obj):

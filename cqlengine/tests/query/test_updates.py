@@ -1,6 +1,5 @@
 from uuid import uuid4
 from cqlengine.exceptions import ValidationError
-from cqlengine.query import QueryException
 
 from cqlengine.tests.base import BaseCassEngTestCase
 from cqlengine.models import Model
@@ -10,13 +9,21 @@ from cqlengine import columns
 
 class TestQueryUpdateModel(Model):
     __keyspace__ = 'test'
-    partition   = columns.UUID(primary_key=True, default=uuid4)
-    cluster     = columns.Integer(primary_key=True)
-    count       = columns.Integer(required=False)
-    text        = columns.Text(required=False, index=True)
-    text_set    = columns.Set(columns.Text, required=False)
-    text_list   = columns.List(columns.Text, required=False)
-    text_map    = columns.Map(columns.Text, columns.Text, required=False)
+    partition = columns.UUID(primary_key=True, default=uuid4)
+    cluster = columns.Integer(primary_key=True)
+    count = columns.Integer(required=False)
+    text = columns.Text(required=False, index=True)
+    text_set = columns.Set(columns.Text, required=False)
+    text_list = columns.List(columns.Text, required=False)
+    text_map = columns.Map(columns.Text, columns.Text, required=False)
+
+
+class TestQueryUpdateCounterModel(Model):
+    __keyspace__ = 'test'
+    partition = columns.UUID(primary_key=True, default=uuid4)
+    cluster = columns.Integer(primary_key=True)
+    value = columns.Counter()
+
 
 class QueryUpdateTests(BaseCassEngTestCase):
 
@@ -24,11 +31,13 @@ class QueryUpdateTests(BaseCassEngTestCase):
     def setUpClass(cls):
         super(QueryUpdateTests, cls).setUpClass()
         sync_table(TestQueryUpdateModel)
+        sync_table(TestQueryUpdateCounterModel)
 
     @classmethod
     def tearDownClass(cls):
         super(QueryUpdateTests, cls).tearDownClass()
         drop_table(TestQueryUpdateModel)
+        drop_table(TestQueryUpdateCounterModel)
 
     def test_update_values(self):
         """ tests calling udpate on a queryset """
@@ -117,7 +126,35 @@ class QueryUpdateTests(BaseCassEngTestCase):
             assert row.text == (None if i == 3 else str(i))
 
     def test_counter_updates(self):
-        pass
+        keys = {
+            'partition': uuid4(),
+            'cluster': 1,
+        }
+
+        # Sanity check
+        TestQueryUpdateCounterModel.objects.create(**keys)
+        obj = TestQueryUpdateCounterModel.objects.get(**keys)
+        self.assertEqual(obj.value, 0)
+
+        # Initial increment
+        TestQueryUpdateCounterModel.objects(**keys).update(value=10)
+        obj = TestQueryUpdateCounterModel.objects.get(**keys)
+        self.assertEqual(obj.value, 10)
+
+        # Increments add up
+        TestQueryUpdateCounterModel.objects(**keys).update(value=20)
+        obj = TestQueryUpdateCounterModel.objects.get(**keys)
+        self.assertEqual(obj.value, 30)
+
+        # Decrement
+        TestQueryUpdateCounterModel.objects(**keys).update(value=-15)
+        obj = TestQueryUpdateCounterModel.objects.get(**keys)
+        self.assertEqual(obj.value, 15)
+
+        # Decrements add up allowing negative values
+        TestQueryUpdateCounterModel.objects(**keys).update(value=-50)
+        obj = TestQueryUpdateCounterModel.objects.get(**keys)
+        self.assertEqual(obj.value, -35)
 
     def test_set_add_updates(self):
         partition = uuid4()

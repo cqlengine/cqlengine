@@ -266,6 +266,39 @@ class TestBigInt(BaseCassEngTestCase):
         it = self.BigIntTest()
         it.validate()
 
+
+class TestAscii(BaseCassEngTestCase):
+
+    def test_type_checking(self):
+        Ascii().validate('string')
+        Ascii().validate(u'unicode')
+        Ascii().validate(bytearray('bytearray', encoding='ascii'))
+
+        with self.assertRaises(ValidationError):
+            Ascii().validate(5)
+
+        with self.assertRaises(ValidationError):
+            Ascii().validate(True)
+
+    def test_unaltering_validation(self):
+        self.assertEquals(Ascii().validate(None), None)
+        self.assertEquals(Ascii().validate(''), '')
+        self.assertEquals(Ascii().validate('yo'), 'yo')
+
+    def test_requirement(self):
+        # Test unrequired value parameter
+        Ascii(required=False).validate(None)
+        Ascii(required=False).validate('')
+        Ascii(required=False).validate('yo')
+
+        # Test required value
+        with self.assertRaises(ValidationError):
+            Ascii(required=True).validate(None)
+        with self.assertRaises(ValidationError):
+            Ascii(required=True).validate('')
+        Ascii(required=True).validate('yo')
+
+
 class TestText(BaseCassEngTestCase):
 
     def test_min_length(self):

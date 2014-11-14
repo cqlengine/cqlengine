@@ -233,26 +233,37 @@ class Blob(Column):
 
 Bytes = Blob
 
+
 class Ascii(Column):
     db_type = 'ascii'
+
+    def validate(self, value):
+        # Normalize blank/empty string to None to let the standard column
+        # validation catch the missing required value.
+        if self.required and not value:
+            value = None
+        value = super(Ascii, self).validate(value)
+        # Only allow None, strings and their derivates.
+        if not isinstance(
+                value, (six.string_types, bytearray)) and value is not None:
+            raise ValidationError('{} is not a string'.format(type(value)))
+        return value
+
 
 class Inet(Column):
     db_type = 'inet'
 
 
-class Text(Column):
+class Text(Ascii):
     db_type = 'text'
 
     def __init__(self, *args, **kwargs):
-        self.min_length = kwargs.pop('min_length', 1 if kwargs.get('required', False) else None)
+        self.min_length = kwargs.pop('min_length', None)
         self.max_length = kwargs.pop('max_length', None)
         super(Text, self).__init__(*args, **kwargs)
 
     def validate(self, value):
         value = super(Text, self).validate(value)
-        if value is None: return
-        if not isinstance(value, (six.string_types, bytearray)) and value is not None:
-            raise ValidationError('{} is not a string'.format(type(value)))
         if self.max_length:
             if len(value) > self.max_length:
                 raise ValidationError('{} is longer than {} characters'.format(self.column_name, self.max_length))

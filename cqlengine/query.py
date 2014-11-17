@@ -690,7 +690,7 @@ class ModelQuerySet(AbstractQuerySet):
     def _validate_select_where(self):
         """ Checks that a filterset will not create invalid select statement """
         #check that there's either a = or IN relationship with a primary key or indexed field
-        equal_ops = [self.model._columns.get(w.field) for w in self._where if isinstance(w.operator, EqualsOperator)]
+        equal_ops = [self.model._get_column(self.model._db_map[w.field]) for w in self._where if isinstance(w.operator, EqualsOperator)]
         token_comparison = any([w for w in self._where if isinstance(w.value, Token)])
         if not any([w.primary_key or w.index for w in equal_ops]) and not token_comparison and not self._allow_filtering:
             raise QueryException('Where clauses require either a "=" or "IN" comparison with either a primary key or indexed field')
@@ -913,7 +913,7 @@ class DMLQuery(object):
                 # don't update something if it hasn't changed
                 if not val_mgr.changed and not isinstance(col, Counter):
                     continue
-                
+
                 static_update_only = (static_update_only and col.static)
                 if isinstance(col, (BaseContainerColumn, Counter)):
                     # get appropriate clause

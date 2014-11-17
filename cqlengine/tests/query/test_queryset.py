@@ -61,6 +61,15 @@ class IndexedTestModel(Model):
     test_result = columns.Integer(index=True)
 
 
+class AliasTestModel(Model):
+    __keyspace__ = 'test'
+    test_id = columns.Integer(primary_key=True, db_field='f1')
+    attempt_id = columns.Integer(primary_key=True, db_field='f2')
+    description = columns.Text(db_field='f3')
+    expected_result = columns.Integer(db_field='f4')
+    test_result = columns.Integer(db_field='f5')
+
+
 class TestMultiClusteringModel(Model):
     __keyspace__ = 'test'
     one = columns.Integer(primary_key=True)
@@ -75,6 +84,29 @@ class TestQuerySetOperation(BaseCassEngTestCase):
         """
         query1 = TestModel.objects(test_id=5)
         assert len(query1._where) == 1
+
+        op = query1._where[0]
+
+        assert isinstance(op, statements.WhereClause)
+        assert isinstance(op.operator, operators.EqualsOperator)
+        assert op.value == 5
+
+        query2 = query1.filter(expected_result__gte=1)
+        assert len(query2._where) == 2
+
+        op = query2._where[1]
+        self.assertIsInstance(op, statements.WhereClause)
+        self.assertIsInstance(op.operator, operators.GreaterThanOrEqualOperator)
+        assert op.value == 1
+
+    def test_query_alias_filter_parsing(self):
+        """
+        Tests the queryset filter method parses it's kwargs properly
+        """
+        query1 = AliasTestModel.objects(test_id=0)
+        assert len(query1._where) == 1
+
+        assert list(query1) != 4
 
         op = query1._where[0]
 
@@ -203,6 +235,11 @@ class BaseQuerySetUsage(BaseCassEngTestCase):
         TestModel.objects.create(test_id=2, attempt_id=2, description='try11', expected_result=70, test_result=45)
         TestModel.objects.create(test_id=2, attempt_id=3, description='try12', expected_result=75, test_result=45)
 
+        AliasTestModel.objects.create(test_id=0, attempt_id=0, description='try1', expected_result=5, test_result=30)
+        AliasTestModel.objects.create(test_id=0, attempt_id=1, description='try2', expected_result=10, test_result=30)
+        AliasTestModel.objects.create(test_id=0, attempt_id=2, description='try3', expected_result=15, test_result=30)
+        AliasTestModel.objects.create(test_id=0, attempt_id=3, description='try4', expected_result=20, test_result=25)
+
         IndexedTestModel.objects.create(test_id=0, attempt_id=0, description='try1', expected_result=5, test_result=30)
         IndexedTestModel.objects.create(test_id=1, attempt_id=1, description='try2', expected_result=10, test_result=30)
         IndexedTestModel.objects.create(test_id=2, attempt_id=2, description='try3', expected_result=15, test_result=30)
@@ -225,6 +262,7 @@ class BaseQuerySetUsage(BaseCassEngTestCase):
     def tearDownClass(cls):
         super(BaseQuerySetUsage, cls).tearDownClass()
         drop_table(TestModel)
+        drop_table(AliasTestModel)
         drop_table(IndexedTestModel)
         drop_table(TestMultiClusteringModel)
 

@@ -2,7 +2,7 @@ from unittest import skipUnless
 from cqlengine.management import sync_table, drop_table, create_keyspace, delete_keyspace
 from cqlengine.tests.base import BaseCassEngTestCase
 from cqlengine.models import Model
-from cqlengine.exceptions import LWTException
+from cqlengine.exceptions import LWTException, IfNotExistsWithCounterColumn
 from cqlengine import columns, BatchQuery
 from uuid import uuid4
 import mock
@@ -18,6 +18,14 @@ class TestIfNotExistsModel(Model):
     id      = columns.UUID(primary_key=True, default=lambda:uuid4())
     count   = columns.Integer()
     text    = columns.Text(required=False)
+
+
+class TestIfNotExistsWithCounterModel(Model):
+
+    __keyspace__ = 'cqlengine_test_lwt'
+
+    id      = columns.UUID(primary_key=True, default=lambda:uuid4())
+    likes   = columns.Counter()
 
 
 class BaseIfNotExistsTest(BaseCassEngTestCase):
@@ -38,6 +46,20 @@ class BaseIfNotExistsTest(BaseCassEngTestCase):
     def tearDownClass(cls):
         super(BaseCassEngTestCase, cls).tearDownClass()
         drop_table(TestIfNotExistsModel)
+        delete_keyspace(TestIfNotExistsModel.__keyspace__)
+
+
+class BaseIfNotExistsWithCounterTest(BaseCassEngTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        create_keyspace(TestIfNotExistsModel.__keyspace__, replication_factor=1)
+        sync_table(TestIfNotExistsWithCounterModel)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BaseCassEngTestCase, cls).tearDownClass()
+        drop_table(TestIfNotExistsWithCounterModel)
         delete_keyspace(TestIfNotExistsModel.__keyspace__)
 
 
@@ -175,4 +197,17 @@ class IfNotExistsInstanceTest(BaseIfNotExistsTest):
         query = m.call_args[0][0].query_string
         self.assertNotIn("IF NOT EXIST", query)
 
+
+class IfNotExistWithCounterTest(BaseIfNotExistsWithCounterTest):
+
+    def test_instance_raise_exception(self):
+        """ make sure exception is raised when calling
+        if_not_exists on table with counter column
+        """
+        id = uuid4()
+
+        self.assertRaises(
+            IfNotExistsWithCounterColumn,
+            TestIfNotExistsWithCounterModel.if_not_exists
+        )
 

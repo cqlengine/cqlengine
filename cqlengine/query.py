@@ -785,7 +785,7 @@ class ModelQuerySet(AbstractQuerySet):
 
     def if_not_exists(self):
         if self.model._has_counter:
-            raise IfNotExistsWithCounterColumn('if_not_exists would be ignored on table with counter columns')
+            raise IfNotExistsWithCounterColumn('if_not_exists cannot be used with tables containing columns')
         clone = copy.deepcopy(self)
         clone._if_not_exists = True
         return clone

@@ -18,8 +18,6 @@ class TestIfNotExistsModel(Model):
 
 class TestIfNotExistsWithCounterModel(Model):
 
-    __keyspace__ = 'cqlengine_test_lwt'
-
     id      = columns.UUID(primary_key=True, default=lambda:uuid4())
     likes   = columns.Counter()
 
@@ -39,23 +37,21 @@ class BaseIfNotExistsTest(BaseCassEngTestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(BaseCassEngTestCase, cls).tearDownClass()
+        super(BaseIfNotExistsTest, cls).tearDownClass()
         drop_table(TestIfNotExistsModel)
-
 
 
 class BaseIfNotExistsWithCounterTest(BaseCassEngTestCase):
 
     @classmethod
     def setUpClass(cls):
-        create_keyspace(TestIfNotExistsModel.__keyspace__, replication_factor=1)
+        super(BaseIfNotExistsWithCounterTest, cls).setUpClass()
         sync_table(TestIfNotExistsWithCounterModel)
 
     @classmethod
     def tearDownClass(cls):
-        super(BaseCassEngTestCase, cls).tearDownClass()
+        super(BaseIfNotExistsWithCounterTest, cls).tearDownClass()
         drop_table(TestIfNotExistsWithCounterModel)
-        delete_keyspace(TestIfNotExistsModel.__keyspace__)
 
 
 class IfNotExistsInsertTests(BaseIfNotExistsTest):

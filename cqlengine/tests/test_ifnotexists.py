@@ -54,6 +54,21 @@ class BaseIfNotExistsWithCounterTest(BaseCassEngTestCase):
         drop_table(TestIfNotExistsWithCounterModel)
 
 
+
+class BaseIfNotExistsWithCounterTest(BaseCassEngTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        create_keyspace(TestIfNotExistsModel.__keyspace__, replication_factor=1)
+        sync_table(TestIfNotExistsWithCounterModel)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BaseCassEngTestCase, cls).tearDownClass()
+        drop_table(TestIfNotExistsWithCounterModel)
+        delete_keyspace(TestIfNotExistsModel.__keyspace__)
+
+
 class IfNotExistsInsertTests(BaseIfNotExistsTest):
 
     @skipUnless(PROTOCOL_VERSION >= 2, "only runs against the cql3 protocol v2.0")

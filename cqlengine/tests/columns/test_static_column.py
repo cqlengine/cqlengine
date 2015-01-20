@@ -11,7 +11,7 @@ from cqlengine.tests.base import CASSANDRA_VERSION, PROTOCOL_VERSION
 class TestStaticModel(Model):
 
     partition = columns.UUID(primary_key=True, default=uuid4)
-    cluster = columns.UUID(primary_key=True)
+    cluster = columns.UUID(primary_key=True, default=uuid4)
     static = columns.Text(static=True)
     text = columns.Text()
 
@@ -65,6 +65,25 @@ class TestStaticColumn(BaseCassEngTestCase):
     @skipUnless(PROTOCOL_VERSION >= 2, "only runs against the cql3 protocol v2.0")
     def test_static_with_null_cluster_key(self):
         """ Tests that save/update/delete works for static column works when clustering key is null """
+        objs = TestStaticModel.all()
+        for obj in objs:
+            obj.delete()
+            
+        instance = TestStaticModel.create()
+        instance.static = "it's shared"
+        instance.cluster = None
+        instance.save()
+
+        u = TestStaticModel.get(partition=instance.partition)
+        u.static = "it's still shared"
+        u.update()
+        actual = TestStaticModel.get(partition=u.partition)
+        assert actual.static == "it's still shared"
+        instance.delte()
+
+    @skipUnless(PROTOCOL_VERSION >= 2, "only runs against the cql3 protocol v2.0")
+    def test_static_no_default_value_if_explicit(self):
+        """ Tests when a clustering key has default value, but can be overwritten with None if it is set explicitly """
         instance = TestStaticModel.create()
         instance.static = "it's shared"
         instance.cluster = None

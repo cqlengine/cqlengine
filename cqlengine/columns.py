@@ -26,6 +26,7 @@ class BaseValueManager(object):
         self.column = column
         self.previous_value = deepcopy(value)
         self.value = value
+        self.explicit = False
 
     @property
     def deleted(self):

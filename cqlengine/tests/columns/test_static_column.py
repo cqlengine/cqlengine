@@ -34,6 +34,7 @@ class TestStaticColumn(BaseCassEngTestCase):
     def test_mixed_updates(self):
         """ Tests that updates on both static and non-static columns work as intended """
         instance = TestStaticModel.create()
+        instance.cluster = uuid4()
         instance.static = "it's shared"
         instance.text = "some text"
         instance.save()
@@ -51,6 +52,7 @@ class TestStaticColumn(BaseCassEngTestCase):
         """ Tests that updates on static only column work as intended """
         instance = TestStaticModel.create()
         instance.static = "it's shared"
+        instance.cluster = uuid4()
         instance.text = "some text"
         instance.save()
 
@@ -60,3 +62,35 @@ class TestStaticColumn(BaseCassEngTestCase):
         actual = TestStaticModel.get(partition=u.partition)
         assert actual.static == "it's still shared"
 
+    @skipUnless(PROTOCOL_VERSION >= 2, "only runs against the cql3 protocol v2.0")
+    def test_static_with_null_cluster_key(self):
+        """ Tests that save/update/delete works for static column works when clustering key is null """
+        objs = TestStaticModel.all()
+        for obj in objs:
+            obj.delete()
+            
+        instance = TestStaticModel.create()
+        instance.static = "it's shared"
+        instance.cluster = None
+        instance.save()
+
+        u = TestStaticModel.get(partition=instance.partition)
+        u.static = "it's still shared"
+        u.update()
+        actual = TestStaticModel.get(partition=u.partition)
+        assert actual.static == "it's still shared"
+        instance.delte()
+
+    @skipUnless(PROTOCOL_VERSION >= 2, "only runs against the cql3 protocol v2.0")
+    def test_static_no_default_value_if_explicit(self):
+        """ Tests when a clustering key has default value, but can be overwritten with None if it is set explicitly """
+        instance = TestStaticModel.create()
+        instance.static = "it's shared"
+        instance.cluster = None
+        instance.save()
+
+        u = TestStaticModel.get(partition=instance.partition)
+        u.static = "it's still shared"
+        u.update()
+        actual = TestStaticModel.get(partition=u.partition)
+        assert actual.static == "it's still shared"

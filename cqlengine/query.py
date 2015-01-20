@@ -914,11 +914,16 @@ class DMLQuery(object):
         if self.instance is None:
             raise CQLEngineException("DML Query intance attribute is None")
         assert type(self.instance) == self.model
-        static_update_only = True
+        null_clustering_key = static_changed_only = True
         statement = UpdateStatement(self.column_family_name, ttl=self._ttl,
                                     timestamp=self._timestamp, transactions=self._transaction)
+        for name, col in self.instance._clustering_keys.items():
+            null_clustering_key = null_clustering_key and col._val_is_null(getattr(self.instance, name, None))                 
         #get defined fields and their column names
         for name, col in self.model._columns.items():
+            # if clustering key is null, don't include non static columns
+            if null_clustering_key and not col.static and not col.partition_key:
+                continue 
             if not col.is_primary_key:
                 val = getattr(self.instance, name, None)
                 val_mgr = self.instance._values[name]
@@ -931,7 +936,7 @@ class DMLQuery(object):
                 if not val_mgr.changed and not isinstance(col, Counter):
                     continue
                 
-                static_update_only = (static_update_only and col.static)
+                static_changed_only = static_changed_only and col.static 
                 if isinstance(col, (BaseContainerColumn, Counter)):
                     # get appropriate clause
                     if isinstance(col, List): klass = ListUpdateClause
@@ -953,7 +958,8 @@ class DMLQuery(object):
 
         if statement.get_context_size() > 0 or self.instance._has_counter:
             for name, col in self.model._primary_keys.items():
-                if static_update_only and (not col.partition_key):
+                # only include clustering key if clustering key is not null, and non static columns are changed to avoid cql error
+                if (null_clustering_key or static_changed_only) and (not col.partition_key):
                     continue
                 statement.add_where_clause(WhereClause(
                     col.db_field_name,
@@ -962,7 +968,8 @@ class DMLQuery(object):
                 ))
             self._execute(statement)
 
-        self._delete_null_columns()
+        if not null_clustering_key:
+            self._delete_null_columns()
 
     def save(self):
         """
@@ -980,7 +987,12 @@ class DMLQuery(object):
             return self.update()
         else:
             insert = InsertStatement(self.column_family_name, ttl=self._ttl, timestamp=self._timestamp, if_not_exists=self._if_not_exists)
+            static_save_only = True
+            for name, col in self.instance._clustering_keys.items():
+                static_save_only = static_save_only and col._val_is_null(getattr(self.instance, name, None))                 
             for name, col in self.instance._columns.items():
+                if static_save_only and not col.static and not col.partition_key:
+                    continue 
                 val = getattr(self.instance, name, None)
                 if col._val_is_null(val):
                     if self.instance._values[name].changed:
@@ -996,7 +1008,8 @@ class DMLQuery(object):
         if not insert.is_empty:
             self._execute(insert)
         # delete any nulled columns
-        self._delete_null_columns()
+        if not static_save_only:
+            self._delete_null_columns()
 
     def delete(self):
         """ Deletes one instance """
@@ -1005,6 +1018,7 @@ class DMLQuery(object):
 
         ds = DeleteStatement(self.column_family_name, timestamp=self._timestamp)
         for name, col in self.model._primary_keys.items():
+            if not col.partition_key and not getattr(self.instance, name): continue
             ds.add_where_clause(WhereClause(
                 col.db_field_name,
                 EqualsOperator(),

@@ -51,7 +51,10 @@ resolve to the statement with the lastest timestamp.
 Q: How do I reference a non-standard table/column?
 --------------------------------------------------
 
-A: Use double-quotes around the name of the table/column object just as you would in CQL.
+A: In CQL3, use double-quotes around the name of the table/column object just as you would in CQL.
+
+See `Apache Documentation
+<https://cassandra.apache.org/doc/cql3/CQL.html#identifiers>`_.
 
 With cqlengine:
 

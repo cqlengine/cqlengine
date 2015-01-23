@@ -48,3 +48,21 @@ resolve to the statement with the lastest timestamp.
     assert MyModel.objects(id=1).first().count == 3
     assert MyModel.objects(id=1).first().text  == '111'
 
+Q: How do I reference a non-standard table/column?
+--------------------------------------------------
+
+A: Use double-quotes around the name of the table/column object just as you would in CQL.
+
+With cqlengine:
+
+.. code-block:: python
+    
+    from cqlengine.management import create_keyspace
+    create_keyspace('"1234567890"')
+
+With CQL3:
+
+.. code-block:: sql
+
+    CREATE KEYSPACE "1234567890" WITH REPLICATION = {...};
+

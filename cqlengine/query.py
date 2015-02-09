@@ -588,7 +588,7 @@ class AbstractQuerySet(object):
         if v == self._limit:
             return self
 
-        if v < 0:
+        if v is not None and v < 0:
             raise QueryException("Negative limit is not allowed")
 
         clone = copy.deepcopy(self)

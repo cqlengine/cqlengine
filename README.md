@@ -44,6 +44,7 @@ class ExampleModel(Model):
 
 # create your keyspace.  This is, in general, not what you want in production
 # see https://cassandra.apache.org/doc/cql3/CQL.html#createKeyspaceStmt for options
+>>> from cqlengine.management import create_keyspace
 >>> create_keyspace("cqlengine", "SimpleStrategy", 1)
 
 #...and create your CQL table

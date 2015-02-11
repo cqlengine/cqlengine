@@ -5,7 +5,7 @@ import six
 
 from cqlengine import Model, ValidationError
 from cqlengine import columns
-from cqlengine.management import sync_table, drop_table
+from cqlengine.management import sync_table, drop_table, get_cluster
 from cqlengine.tests.base import BaseCassEngTestCase
 
 
@@ -168,6 +168,8 @@ class TestListModel(Model):
     partition = columns.UUID(primary_key=True, default=uuid4)
     int_list = columns.List(columns.Integer, required=False)
     text_list = columns.List(columns.Text, required=False)
+    float_list = columns.List(columns.Float(double_precision=False))
+    double_list = columns.List(columns.Float)
 
 
 class TestListColumn(BaseCassEngTestCase):
@@ -307,6 +309,23 @@ class TestListColumn(BaseCassEngTestCase):
 
         m3 = TestListModel.get(partition=m.partition)
         assert m3.int_list == []
+
+    def test_float_list_is_float(self):
+        TestListModel.create(float_list=[1.0, 2.0, 3.0, 4.0])
+        x = get_cluster()
+        typestring = x.metadata.keyspaces[
+            'cqlengine_test'].tables[
+            'test_list_model'].columns['float_list'].typestring
+        assert typestring == 'list<float>'
+
+    def test_double_list_is_double(self):
+        TestListModel.create(double_list=[1.0, 2.0, 3.0, 4.0])
+        x = get_cluster()
+        typestring = x.metadata.keyspaces[
+            'cqlengine_test'].tables[
+            'test_list_model'].columns['double_list'].typestring
+        assert typestring == 'list<double>'
+
 
 class TestMapModel(Model):
 

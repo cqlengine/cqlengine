@@ -311,20 +311,31 @@ class TestListColumn(BaseCassEngTestCase):
         assert m3.int_list == []
 
     def test_float_list_is_float(self):
-        TestListModel.create(float_list=[1.0, 2.0, 3.0, 4.0])
+        floats = [0.0, 0.5, 1.0, 2.0, 3.0, 4.0]
+        TestListModel.create(float_list=floats)
         x = get_cluster()
         typestring = x.metadata.keyspaces[
             'cqlengine_test'].tables[
             'test_list_model'].columns['float_list'].typestring
         assert typestring == 'list<float>'
 
+        for model in TestListModel.objects:
+            if model.float_list:
+                assert model.float_list == floats
+
     def test_double_list_is_double(self):
-        TestListModel.create(double_list=[1.0, 2.0, 3.0, 4.0])
+        doubles = [0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 4.0]
+        TestListModel.create(double_list=doubles)
         x = get_cluster()
         typestring = x.metadata.keyspaces[
             'cqlengine_test'].tables[
             'test_list_model'].columns['double_list'].typestring
         assert typestring == 'list<double>'
+
+        for model in TestListModel.objects:
+            if model.double_list:
+                assert model.double_list == doubles
+
 
 
 class TestMapModel(Model):

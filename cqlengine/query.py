@@ -31,7 +31,7 @@ def check_applied(result):
     applied to database.
     """
     if result and '[applied]' in result[0] and result[0]['[applied]'] == False:
-        raise LWTException('')
+        raise LWTException(result[0])
 
 
 class AbstractQueryableColumn(UnicodeMixin):

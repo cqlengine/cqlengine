@@ -373,6 +373,13 @@ class TestQuerySetCountSelectionAndIteration(BaseQuerySetUsage):
         with self.assertRaises(TestModel.MultipleObjectsReturned):
             TestModel.objects.get(test_id=1)
 
+    def test_get_multipleobjects_query_exception(self):
+        """
+        Tests that get calls that return multiple results raise a query.MultipleObjectsReturned error
+        """
+        with self.assertRaises(query.MultipleObjectsReturned):
+            TestModel.objects.get(test_id=1)
+
     def test_allow_filtering_flag(self):
         """
         """

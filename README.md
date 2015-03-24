@@ -1,6 +1,10 @@
 cqlengine
 ===============
 
+## IMPORTANT!! cqlengine is being merged into the DataStax native driver.
+
+Please direct issues to the ![native driver JIRA](https://datastax-oss.atlassian.net/secure/RapidBoard.jspa?rapidView=5&projectKey=PYTHON&view=planning.nodetail)
+
 ![cqlengine build status](https://travis-ci.org/cqlengine/cqlengine.svg?branch=master)
 ![cqlengine pypi version](http://img.shields.io/pypi/v/cqlengine.svg)
 ![cqlengine monthly downloads](http://img.shields.io/pypi/dm/cqlengine.svg)
@@ -11,7 +15,7 @@ cqlengine is a Cassandra CQL 3 Object Mapper for Python
 
 [Documentation](https://cqlengine.readthedocs.org/en/latest/)
 
-[Report a Bug](https://github.com/cqlengine/cqlengine/issues)
+[Report a Bug](https://datastax-oss.atlassian.net/secure/RapidBoard.jspa?rapidView=5&projectKey=PYTHON&view=planning.nodetail) (Please use this JIRA rather than github issues as it is being retired)
 
 [Users Mailing List](https://groups.google.com/forum/?fromgroups#!forum/cqlengine-users)
 

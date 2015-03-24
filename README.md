@@ -3,7 +3,7 @@ cqlengine
 
 ## IMPORTANT!! cqlengine is being merged into the DataStax native driver.
 
-Please direct issues to the ![native driver JIRA](https://datastax-oss.atlassian.net/secure/RapidBoard.jspa?rapidView=5&projectKey=PYTHON&view=planning.nodetail)
+Please direct issues to the [native driver JIRA](https://datastax-oss.atlassian.net/secure/RapidBoard.jspa?rapidView=5&projectKey=PYTHON&view=planning.nodetail)
 
 ![cqlengine build status](https://travis-ci.org/cqlengine/cqlengine.svg?branch=master)
 ![cqlengine pypi version](http://img.shields.io/pypi/v/cqlengine.svg)

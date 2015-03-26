@@ -17,6 +17,8 @@ class TestQueryUpdateModel(Model):
     text_set    = columns.Set(columns.Text, required=False)
     text_list   = columns.List(columns.Text, required=False)
     text_map    = columns.Map(columns.Text, columns.Text, required=False)
+    bool_list   = columns.List(columns.Boolean, required=False)
+
 
 class QueryUpdateTests(BaseCassEngTestCase):
 
@@ -173,6 +175,17 @@ class QueryUpdateTests(BaseCassEngTestCase):
                 text_list__append=['bar'])
         obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
         self.assertEqual(obj.text_list, ["foo", "bar"])
+
+    def test_list_bool_append_updates(self):
+        partition = uuid4()
+        cluster = 1
+        TestQueryUpdateModel.objects.create(
+                partition=partition, cluster=cluster, bool_list=[True])
+        TestQueryUpdateModel.objects(
+                partition=partition, cluster=cluster).update(
+                bool_list__append=[False])
+        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
+        self.assertEqual(obj.bool_list, [True, False])
 
     def test_list_prepend_updates(self):
         """ Prepend two things since order is reversed by default by CQL """

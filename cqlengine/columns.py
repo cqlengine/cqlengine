@@ -626,6 +626,11 @@ class List(BaseContainerColumn):
 
         def __str__(self):
             cq = cql_quote
+            def no_quote_bool(val):
+                "prevent quoting of bool types"
+                return str(val) if isinstance(val, bool) else cq(val)
+            return '[' + ', '.join([no_quote_bool(v) for v in self.value]) + ']'
+
             return '[' + ', '.join([cq(v) for v in self.value]) + ']'
 
         def __nonzero__(self):

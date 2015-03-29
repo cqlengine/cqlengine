@@ -18,6 +18,7 @@ class TestQueryUpdateModel(Model):
     text_list   = columns.List(columns.Text, required=False)
     text_map    = columns.Map(columns.Text, columns.Text, required=False)
     bool_list   = columns.List(columns.Boolean, required=False)
+    int_list  = columns.List(columns.Integer, required=False)
 
 
 class QueryUpdateTests(BaseCassEngTestCase):
@@ -165,17 +166,6 @@ class QueryUpdateTests(BaseCassEngTestCase):
         obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
         self.assertEqual(obj.text_set, {"foo"})
 
-    def test_list_append_updates(self):
-        partition = uuid4()
-        cluster = 1
-        TestQueryUpdateModel.objects.create(
-                partition=partition, cluster=cluster, text_list=["foo"])
-        TestQueryUpdateModel.objects(
-                partition=partition, cluster=cluster).update(
-                text_list__append=['bar'])
-        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
-        self.assertEqual(obj.text_list, ["foo", "bar"])
-
     def test_list_bool_append_updates(self):
         partition = uuid4()
         cluster = 1
@@ -187,7 +177,51 @@ class QueryUpdateTests(BaseCassEngTestCase):
         obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
         self.assertEqual(obj.bool_list, [True, False])
 
-    def test_list_prepend_updates(self):
+    def test_list_bool_prepend_updates(self):
+        partition = uuid4()
+        cluster = 1
+        TestQueryUpdateModel.objects.create(
+                partition=partition, cluster=cluster, bool_list=[True])
+        TestQueryUpdateModel.objects(
+                partition=partition, cluster=cluster).update(
+                bool_list__prepend=[False])
+        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
+        self.assertEqual(obj.bool_list, [False, True])
+
+    def test_list_integer_append_updates(self):
+        partition = uuid4()
+        cluster = 1
+        TestQueryUpdateModel.objects.create(
+                partition=partition, cluster=cluster, int_list=[1])
+        TestQueryUpdateModel.objects(
+                partition=partition, cluster=cluster).update(
+                int_list__append=[2])
+        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
+        self.assertEqual(obj.int_list, [1, 2])
+
+    def test_list_integer_prepend_updates(self):
+        partition = uuid4()
+        cluster = 1
+        TestQueryUpdateModel.objects.create(
+                partition=partition, cluster=cluster, int_list=[1])
+        TestQueryUpdateModel.objects(
+                partition=partition, cluster=cluster).update(
+                int_list__prepend=[0])
+        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
+        self.assertEqual(obj.int_list, [0, 1])
+
+    def test_list_text_append_updates(self):
+        partition = uuid4()
+        cluster = 1
+        TestQueryUpdateModel.objects.create(
+                partition=partition, cluster=cluster, text_list=["foo"])
+        TestQueryUpdateModel.objects(
+                partition=partition, cluster=cluster).update(
+                text_list__append=['bar'])
+        obj = TestQueryUpdateModel.objects.get(partition=partition, cluster=cluster)
+        self.assertEqual(obj.text_list, ["foo", "bar"])
+
+    def test_list_text_prepend_updates(self):
         """ Prepend two things since order is reversed by default by CQL """
         partition = uuid4()
         cluster = 1

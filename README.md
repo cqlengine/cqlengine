@@ -1,7 +1,9 @@
 cqlengine
 ===============
 
-## IMPORTANT!! cqlengine is being merged into the DataStax native driver.
+## IMPORTANT!! This package is now deprecated!!
+
+## Please use the DataStax native driver, which includes cqlengine as the cassandra.cqlengine module.
 
 Please direct issues to the [native driver JIRA](https://datastax-oss.atlassian.net/secure/RapidBoard.jspa?rapidView=5&projectKey=PYTHON&view=planning.nodetail)
 

@@ -551,8 +551,8 @@ QuerySet method reference
             class Row(Model):
                 row_id      = columns.Integer(primary_key=True)
                 set_column  = columns.Set(Integer)
-                list_column = columns.Set(Integer)
-                map_column  = columns.Set(Integer, Integer)
+                list_column = columns.List(Integer)
+                map_column  = columns.Map(Integer, Integer)
 
         :class:`~cqlengine.columns.Set`
 

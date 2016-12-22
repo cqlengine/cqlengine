@@ -532,7 +532,7 @@ class BaseContainerColumn(Column):
             self.value_col = self.value_type()
         else:
             self.value_col = value_type
-            self.value_type = self.value_col.__class__
+            self.value_type = value_type  # TODO self.value_col.__class__
 
         super(BaseContainerColumn, self).__init__(**kwargs)
 

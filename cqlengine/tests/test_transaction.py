@@ -54,9 +54,16 @@ class TestTransaction(BaseCassEngTestCase):
 
     def test_update_failure(self):
         t = TestTransactionModel.create(text='blah blah')
+        uid = t.id
         t.text = 'new blah'
         t = t.iff(text='something wrong')
-        self.assertRaises(LWTException, t.save)
+        with self.assertRaises(LWTException) as assertion:
+            t.save()
+
+        self.assertEquals(assertion.exception.existing, {
+            'text': 'blah blah',
+            '[applied]': False,
+        })
 
     def test_blind_update(self):
         t = TestTransactionModel.create(text='blah blah')
@@ -74,7 +81,13 @@ class TestTransaction(BaseCassEngTestCase):
         t.text = 'something else'
         uid = t.id
         qs = TestTransactionModel.objects(id=uid).iff(text='Not dis!')
-        self.assertRaises(LWTException, qs.update, text='this will never work')
+        with self.assertRaises(LWTException) as assertion:
+            qs.update(text='this will never work')
+
+        self.assertEquals(assertion.exception.existing, {
+            'text': 'blah blah',
+            '[applied]': False,
+        })
 
     def test_transaction_clause(self):
         tc = TransactionClause('some_value', 23)
@@ -94,7 +107,14 @@ class TestTransaction(BaseCassEngTestCase):
 
         b = BatchQuery()
         updated.batch(b).iff(count=6).update(text='and another thing')
-        self.assertRaises(LWTException, b.execute)
+        with self.assertRaises(LWTException) as assertion:
+            b.execute()
+
+        self.assertEquals(assertion.exception.existing, {
+            'id': id,
+            'count': 5,
+            '[applied]': False,
+        })
 
         updated = TestTransactionModel.objects(id=id).first()
         self.assertEqual(updated.text, 'something else')

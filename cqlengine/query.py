@@ -839,6 +839,12 @@ class ModelQuerySet(AbstractQuerySet):
         if nulled_columns:
             ds = DeleteStatement(self.column_family_name, fields=nulled_columns, where=self._where)
             self._execute(ds)
+            
+    def using(self, alias):
+        """
+        Fake multi-database support. Doesn't modify anything and returns the original QuerySet.
+        """
+        return self
 
 
 class DMLQuery(object):

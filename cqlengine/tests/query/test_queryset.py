@@ -153,6 +153,9 @@ class TestQuerySetOperation(BaseCassEngTestCase):
         assert query1._limit == 1
         assert query3._limit == 2
 
+        query4 = TestModel.objects(test_id=5).limit(None)
+        assert query4._limit is None
+
     def test_the_all_method_duplicates_queryset(self):
         """
         Tests that calling all on a queryset with previously defined filters duplicates queryset

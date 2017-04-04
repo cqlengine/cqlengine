@@ -217,15 +217,17 @@ Token Function
 
     .. code-block:: python
 
+        from cassandra.cqlengine.functions import Token
+
         class Items(Model):
             id      = cqlengine.Text(primary_key=True)
             data    = cqlengine.Bytes()
 
         query = Items.objects.all().limit(10)
 
-        first_page = list(query);
+        first_page = list(query)
         last = first_page[-1]
-        next_page = list(query.filter(pk__token__gt=cqlengine.Token(last.pk)))
+        next_page = list(query.filter(pk__token__gt=Token(last.pk)))
 
 QuerySets are immutable
 ======================

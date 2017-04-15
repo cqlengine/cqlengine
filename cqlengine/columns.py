@@ -48,6 +48,17 @@ class BaseValueManager(object):
     def getval(self):
         return self.value
 
+    def getactval(self):
+        """
+        Get actual value
+        If value is None, column is required or is primary key and column has a default value, value setted and
+        returned default value
+        """
+        if self.value is None and self.column.has_default and (self.column.required or self.column.is_primary_key):
+            self.value = self.column.default() if callable(self.column.default) else self.column.default
+
+        return self.value
+
     def setval(self, val):
         self.value = val
 

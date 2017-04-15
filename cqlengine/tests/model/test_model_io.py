@@ -275,6 +275,38 @@ class TestQueryQuoting(BaseCassEngTestCase):
         assert model1.insert == model2[0].insert
 
 
+class ValueManagerModel(Model):
+    id          = columns.UUID(primary_key=True, default=uuid4)
+    count       = columns.Integer(required=True, default=3)
+    count2      = columns.Integer()
+    name        = columns.Text(required=True)
+
+class TestValueManaging(BaseCassEngTestCase):
+
+    def test_value_managing(self):
+        """
+        """
+        create_table(ValueManagerModel)
+
+        model1 = ValueManagerModel(name="model-1")
+        model2 = ValueManagerModel.create(name="model-2")
+
+        model1_vals_befor_save = [(k, v.getactval()) for k, v in model1._values.items()]
+        model1.save()
+
+        model1_vals_after_save = [(k, v.getactval()) for k, v in model1._values.items()]
+
+        model1_from_db = model1.get(id=model1.id)
+        model1_vals_from_saved = [(k, v.getactval()) for k, v in model1._values.items()]
+
+        model2_act_vals = [(k, v.getactval()) for k, v in model2._values.items()]
+        model2_vals = [(k, v.value) for k, v in model2._values.items()]
+
+        self.assertListEqual(model1_vals_befor_save, model1_vals_after_save)
+        self.assertListEqual(model1_vals_befor_save, model1_vals_from_saved)
+        self.assertListEqual(model2_act_vals, model2_vals)
+
+
 class TestQueryModel(Model):
 
     test_id = columns.UUID(primary_key=True, default=uuid4)

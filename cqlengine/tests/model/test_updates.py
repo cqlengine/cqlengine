@@ -77,6 +77,15 @@ class ModelUpdateTests(BaseCassEngTestCase):
             m0.update(count=5)
         assert execute.call_count == 0
 
+    def test_noop_model_assignation_update(self):
+        """ tests that assigning the same value on a model will do nothing. """
+        m0 = TestUpdateModel.create(count=5, text='monkey')
+        m1 = TestUpdateModel.get(partition=m0.partition, cluster=m0.cluster)
+        m1.count = 5
+        with patch.object(ConnectionPool, 'execute') as execute:
+            m1.save()
+        assert execute.call_count == 0
+
     def test_invalid_update_kwarg(self):
         """ tests that passing in a kwarg to the update method that isn't a column will fail """
         m0 = TestUpdateModel.create(count=5, text='monkey')
@@ -89,3 +98,7 @@ class ModelUpdateTests(BaseCassEngTestCase):
         with self.assertRaises(ValidationError):
             m0.update(partition=uuid4())
 
+    def test_noop_primary_key_update(self):
+        """ tests that assigning the same value on a primary key will do nothing. """
+        m0 = TestUpdateModel.create(count=5, text='monkey')
+        m0.update(partition=m0.partition)

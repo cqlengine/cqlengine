@@ -202,7 +202,7 @@ class TablePropertiesTests(BaseCassEngTestCase):
         if CASSANDRA_VERSION == 20:
              expected['index_interval'] = 94207
 
-        # these featuers removed in cassandra 2.1
+        # these features removed in cassandra 2.1
         if CASSANDRA_VERSION <= 20:
             expected['caching'] = CACHING_NONE
             expected['replicate_on_write'] = True

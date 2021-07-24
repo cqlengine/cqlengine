@@ -30,7 +30,7 @@ class ModelUpdateTests(BaseCassEngTestCase):
         drop_table(TestUpdateModel)
 
     def test_update_model(self):
-        """ tests calling udpate on models with no values passed in """
+        """ tests calling update on models with no values passed in """
         m0 = TestUpdateModel.create(count=5, text='monkey')
 
         # independently save over a new count value, unknown to original instance

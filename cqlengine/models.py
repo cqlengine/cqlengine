@@ -608,7 +608,7 @@ class BaseModel(object):
         for k, v in values.items():
             col = self._columns.get(k)
 
-            # check for nonexistant columns
+            # check for nonexistent columns
             if col is None:
                 raise ValidationError("{}.{} has no column named: {}".format(self.__module__, self.__class__.__name__, k))
 

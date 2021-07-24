@@ -31,7 +31,7 @@ class QueryUpdateTests(BaseCassEngTestCase):
         drop_table(TestQueryUpdateModel)
 
     def test_update_values(self):
-        """ tests calling udpate on a queryset """
+        """ tests calling update on a queryset """
         partition = uuid4()
         for i in range(5):
             TestQueryUpdateModel.create(partition=partition, cluster=i, count=i, text=str(i))
@@ -51,7 +51,7 @@ class QueryUpdateTests(BaseCassEngTestCase):
             assert row.text == str(i)
 
     def test_update_values_validation(self):
-        """ tests calling udpate on models with values passed in """
+        """ tests calling update on models with values passed in """
         partition = uuid4()
         for i in range(5):
             TestQueryUpdateModel.create(partition=partition, cluster=i, count=i, text=str(i))
@@ -205,7 +205,7 @@ class QueryUpdateTests(BaseCassEngTestCase):
 
         This test fails because of a bug in the cql python library not
         converting None to null (and the cql library is no longer in active
-        developement).
+        development).
         """
         # partition = uuid4()
         # cluster = 1

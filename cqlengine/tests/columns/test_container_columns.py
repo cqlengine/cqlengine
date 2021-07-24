@@ -114,7 +114,7 @@ class TestSetColumn(BaseCassEngTestCase):
             TestSetModel.create(text_set={str(uuid4()) for i in range(65536)})
 
     def test_partial_updates(self):
-        """ Tests that partial udpates work as expected """
+        """ Tests that partial updates work as expected """
         m1 = TestSetModel.create(int_set={1, 2, 3, 4})
 
         m1.int_set.add(5)
@@ -225,7 +225,7 @@ class TestListColumn(BaseCassEngTestCase):
             TestListModel.create(text_list=[str(uuid4()) for i in range(65536)])
 
     def test_partial_updates(self):
-        """ Tests that partial udpates work as expected """
+        """ Tests that partial updates work as expected """
         final = list(range(10))
         initial = final[3:7]
         m1 = TestListModel.create(int_list=initial)
@@ -394,7 +394,7 @@ class TestMapColumn(BaseCassEngTestCase):
             TestMapModel.create(text_map={str(uuid4()): i for i in range(65536)})
 
     def test_partial_updates(self):
-        """ Tests that partial udpates work as expected """
+        """ Tests that partial updates work as expected """
         now = datetime.now()
         #derez it a bit
         now = datetime(*now.timetuple()[:-3])

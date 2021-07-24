@@ -12,7 +12,7 @@ Python versions:
 - 2.7
 - 3.4
 
-Cassandra vesions:
+Cassandra versions:
 
 - 1.2 (protocol_version 1)
 - 2.0 (protocol_version 2)
@@ -28,7 +28,7 @@ Please see the contributing guidelines: https://github.com/cqlengine/cqlengine/b
 Testing Locally
 =================
 
-Before testing, you'll need to set an environment variable to the version of Cassandra that's being tested.  The version cooresponds to the <Major><Minor> release, so for example if you're testing against Cassandra 2.1, you'd set the following:
+Before testing, you'll need to set an environment variable to the version of Cassandra that's being tested.  The version corresponds to the <Major><Minor> release, so for example if you're testing against Cassandra 2.1, you'd set the following:
 
 .. code-block:: bash
 

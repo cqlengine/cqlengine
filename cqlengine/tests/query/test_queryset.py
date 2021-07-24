@@ -90,7 +90,7 @@ class TestQuerySetOperation(BaseCassEngTestCase):
         assert op.value == 1
 
     def test_query_expression_parsing(self):
-        """ Tests that query experessions are evaluated properly """
+        """ Tests that query expressions are evaluated properly """
         query1 = TestModel.filter(TestModel.test_id == 5)
         assert len(query1._where) == 1
 
@@ -109,14 +109,14 @@ class TestQuerySetOperation(BaseCassEngTestCase):
 
     def test_using_invalid_column_names_in_filter_kwargs_raises_error(self):
         """
-        Tests that using invalid or nonexistant column names for filter args raises an error
+        Tests that using invalid or nonexistent column names for filter args raises an error
         """
         with self.assertRaises(query.QueryException):
             TestModel.objects(nonsense=5)
 
-    def test_using_nonexistant_column_names_in_query_args_raises_error(self):
+    def test_using_nonexistent_column_names_in_query_args_raises_error(self):
         """
-        Tests that using invalid or nonexistant columns for query args raises an error
+        Tests that using invalid or nonexistent columns for query args raises an error
         """
         with self.assertRaises(AttributeError):
             TestModel.objects(TestModel.nonsense == 5)
@@ -171,7 +171,7 @@ class TestQuerySetOperation(BaseCassEngTestCase):
         Tests that trying to add fields to either only or defer, or doing so more than once fails
         """
 
-    def test_defining_only_or_defer_on_nonexistant_fields_fails(self):
+    def test_defining_only_or_defer_on_nonexistent_fields_fails(self):
         """
         Tests that setting only or defer fields that don't exist raises an exception
         """

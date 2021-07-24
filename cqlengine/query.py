@@ -525,7 +525,7 @@ class AbstractQuerySet(object):
         Returns a single instance matching this query, optionally with additional filter kwargs.
 
         A DoesNotExistError will be raised if there are no rows matching the query
-        A MultipleObjectsFoundError will be raised if there is more than one row matching the queyr
+        A MultipleObjectsFoundError will be raised if there is more than one row matching the query
         """
         if args or kwargs:
             return self.filter(*args, **kwargs).get()
@@ -801,7 +801,7 @@ class ModelQuerySet(AbstractQuerySet):
         for name, val in values.items():
             col_name, col_op = self._parse_filter_arg(name)
             col = self.model._columns.get(col_name)
-            # check for nonexistant columns
+            # check for nonexistent columns
             if col is None:
                 raise ValidationError("{}.{} has no column named: {}".format(self.__module__, self.model.__name__, col_name))
             # check for primary key update attempts

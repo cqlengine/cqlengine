@@ -33,7 +33,7 @@ class TestQuerySetOperation(BaseCassEngTestCase):
         assert op.value == 1
 
     def test_query_expression_parsing(self):
-        """ Tests that query experessions are evaluated properly """
+        """ Tests that query expressions are evaluated properly """
         query1 = self.table.filter(self.table.column('test_id') == 5)
         assert len(query1._where) == 1
 

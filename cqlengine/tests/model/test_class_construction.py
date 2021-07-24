@@ -24,7 +24,7 @@ class TestModelClassFunction(BaseCassEngTestCase):
             id  = columns.UUID(primary_key=True, default=lambda:uuid4())
             text = columns.Text()
 
-        #check class attibutes
+        #check class attributes
         self.assertHasAttr(TestModel, '_columns')
         self.assertHasAttr(TestModel, 'id')
         self.assertHasAttr(TestModel, 'text')
